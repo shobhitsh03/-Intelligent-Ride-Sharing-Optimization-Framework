@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+/* App base styles */
+html, body, #root { height: 100%; }
+
+/* Light theme variables (kept minimal; app defaults to dark/Uber style) */
+:root {
+  --brand: #000000;   /* Uber black */
+  --accent: #FFC043;  /* Uber accent */
+  --primary: var(--brand);
+  --bg: #f7f7f7;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+}
+
+/* Dark theme variables */
+.dark {
+  --brand: #000000;
+  --accent: #FFC043;
+  --primary: var(--brand);
+  --bg: #0a0a0a;      /* near-black */
+  --surface: #111111; /* dark surface */
+  --text: #f5f5f5;    /* off-white */
+  --muted: #a3a3a3;   /* gray */
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+a { color: var(--primary); }
+
+/* Custom scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--primary);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
