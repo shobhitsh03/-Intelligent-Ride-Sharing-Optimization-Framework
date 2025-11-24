@@ -5,16 +5,22 @@ import { Card, Button, Input, Select, Alert } from '../components/UI.jsx';
 import LoadingOverlay from '../components/LoadingOverlay.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Load Stripe
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY 
+  ? import('@stripe/stripe-js').then(Stripe => Stripe.default(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY))
+  : null;
+
 export default function Payment() {
   const location = useLocation();
   const [amount, setAmount] = useState(5000); // in paise for Razorpay / cents for Stripe
-  const [provider, setProvider] = useState('razorpay');
+  const [provider, setProvider] = useState('stripe'); // Default to Stripe
   const [bookingId, setBookingId] = useState('');
   const [rideId, setRideId] = useState('');
   const [msg, setMsg] = useState('');
   const [type, setType] = useState('info');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [bookNowPayLater, setBookNowPayLater] = useState(false);
 
   // Prefill from navigation state (Find Ride "Book")
   useEffect(() => {
@@ -29,17 +35,34 @@ export default function Payment() {
     setSuccess(false);
     setLoading(true);
     try {
+      // Get ride details to determine the correct amount
+      let bookingAmount = Number(amount);
+      
+      // If Book Now Pay Later is selected, create booking with 0 amount
+      if (bookNowPayLater) {
+        bookingAmount = 0;
+      }
+      
       // Create booking placeholder if not provided
       let bid = bookingId;
       if (!bid) {
         const { data } = await api.post('/api/booking/create', {
           rideId: rideId || 'demo',
           seats: 1,
-          amount: Number(amount),
-          paymentProvider: provider,
+          amount: bookingAmount,
+          paymentProvider: bookNowPayLater ? 'pending' : provider,
         });
-          bid = data.booking?._id;
-          setBookingId(bid || '');
+        bid = data.booking?._id;
+        setBookingId(bid || '');
+      }
+
+      // If Book Now Pay Later, skip payment processing
+      if (bookNowPayLater) {
+        setMsg('Ride booked successfully! You can pay later.');
+        setType('success');
+        setSuccess(true);
+        setLoading(false);
+        return;
       }
 
       const { data: orderData } = await api.post('/api/payment/order', {
@@ -67,9 +90,40 @@ export default function Payment() {
         };
         const rzp = new window.Razorpay(options);
         rzp.open();
-      } else if (provider === 'stripe' && orderData?.paymentIntent?.client_secret) {
-        setMsg('Stripe PI created. Integrate confirmCardPayment on a real form.');
-        setType('info');
+      } else if (provider === 'stripe' && orderData?.paymentIntent?.client_secret && stripePromise) {
+        try {
+          const stripe = await stripePromise;
+          const { error } = await stripe.confirmCardPayment(orderData.paymentIntent.client_secret, {
+            payment_method: {
+              card: {
+                // For demo purposes, using a test token
+                // In production, you'd collect card details from a form
+                token: 'tok_visa' // Test token
+              }
+            }
+          });
+
+          if (error) {
+            setMsg(error.message);
+            setType('error');
+          } else {
+            await api.post('/api/payment/verify', { 
+              provider, 
+              bookingId: bid, 
+              paymentId: orderData.paymentIntent.id, 
+              status: 'paid' 
+            });
+            setMsg('Payment success');
+            setType('success');
+            setSuccess(true);
+          }
+        } catch (stripeError) {
+          setMsg('Stripe payment failed: ' + stripeError.message);
+          setType('error');
+        }
+      } else if (provider === 'stripe') {
+        setMsg('Stripe not configured. Add VITE_STRIPE_PUBLISHABLE_KEY to your .env file');
+        setType('error');
       } else {
         setMsg('Payment provider not ready');
         setType('error');
@@ -83,17 +137,45 @@ export default function Payment() {
 
   return (
     <div className="max-w-md mx-auto">
-      <LoadingOverlay show={loading} text="Processing payment..." />
+      <LoadingOverlay show={loading} text="Processing..." />
       <Card className="p-6 space-y-3">
         <h2 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Payment</h2>
         <div className="space-y-2">
-          <Select value={provider} onChange={(e)=>setProvider(e.target.value)}>
-            <option value="razorpay">Razorpay (IN)</option>
+          <Select value={provider} onChange={(e)=>setProvider(e.target.value)} disabled={bookNowPayLater}>
             <option value="stripe">Stripe (test)</option>
           </Select>
-          <Input type="number" value={amount} onChange={(e)=>setAmount(e.target.value)} placeholder="Amount (paise/cents)" />
+          <Input 
+            type="number" 
+            value={amount} 
+            onChange={(e)=>setAmount(e.target.value)} 
+            placeholder="Amount (₹)" 
+            disabled={bookNowPayLater}
+          />
+          <div className="text-xs text-right" style={{ color: 'var(--muted)' }}>
+            {amount > 0 ? `₹${(amount / 100).toFixed(2)}` : '₹0.00'}
+          </div>
           <Input placeholder="Booking ID (optional)" value={bookingId} onChange={(e)=>setBookingId(e.target.value)} />
-          <Button className="w-full" onClick={startPayment}>Pay</Button>
+          
+          {/* Book Now, Pay Later Option */}
+          <div className="flex items-center space-x-2 p-3 rounded-lg border" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
+            <input
+              type="checkbox"
+              id="bookNowPayLater"
+              checked={bookNowPayLater}
+              onChange={(e) => setBookNowPayLater(e.target.checked)}
+              className="rounded text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="bookNowPayLater" className="text-sm font-medium cursor-pointer" style={{ color: 'var(--text)' }}>
+              Book Now, Pay Later
+            </label>
+          </div>
+          
+          <Button 
+            className="w-full" 
+            onClick={bookNowPayLater ? () => startPayment() : startPayment}
+          >
+            {bookNowPayLater ? 'Book Ride (Pay Later)' : 'Pay Now'}
+          </Button>
         </div>
         {msg && <Alert type={type}>{msg}</Alert>}
       </Card>
@@ -109,13 +191,33 @@ export default function Payment() {
             exit={{ opacity: 0, y: 20 }}
           >
             <div className="text-sm mb-3" style={{ color: 'var(--muted)' }}>Booking confirmed!</div>
-            <div className="relative h-24 rounded-md" style={{ background: 'linear-gradient(90deg, color-mix(in oklab, var(--primary) 10%, transparent), transparent)' }}>
-              <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 rounded-full" style={{ background: 'color-mix(in oklab, var(--primary) 30%, transparent)' }} />
-              <motion.div className="w-12 h-7 rounded-full border shadow"
-                style={{ background: '#fff', borderColor: 'rgba(0,0,0,0.08)' }}
-                animate={{ x: [0, 260, 0] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-              />
+            <div className="flex justify-center items-center h-24">
+              <motion.div
+                className="w-16 h-16 rounded-full border-2 flex items-center justify-center"
+                style={{ 
+                  background: 'color-mix(in oklab, var(--primary) 10%, transparent)',
+                  borderColor: 'var(--primary)'
+                }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              >
+                <motion.svg
+                  className="w-8 h-8"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                >
+                  <motion.path
+                    d="M5 13l4 4L19 7"
+                    style={{ stroke: 'var(--primary)' }}
+                  />
+                </motion.svg>
+              </motion.div>
             </div>
           </motion.div>
         )}

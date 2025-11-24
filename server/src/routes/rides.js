@@ -26,6 +26,17 @@ router.post('/create', auth('driver'), async (req, res) => {
   }
 });
 
+// Get a single ride by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.id).populate('driver', 'name email');
+    if (!ride) return res.status(404).json({ error: 'Ride not found' });
+    res.json({ ride });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch ride' });
+  }
+});
+
 // Driver ride history
 router.get('/mine', auth('driver'), async (req, res) => {
   try {

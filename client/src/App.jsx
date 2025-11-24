@@ -11,6 +11,9 @@ import Track from './pages/Track.jsx';
 import Payment from './pages/Payment.jsx';
 import Forgot from './pages/Forgot.jsx';
 import Reset from './pages/Reset.jsx';
+import DriverDashboard from './pages/DriverDashboard.jsx';
+import RideBookings from './pages/RideBookings.jsx';
+import Debug from './pages/Debug.jsx';
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Car, Search, UserPlus, LogIn, LogOut, Menu as MenuIcon, Sun, Moon, DashboardIcon } from './components/Icons.jsx';
@@ -135,14 +138,21 @@ function App() {
               {(() => { const u = (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null); const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []); return (
                 <>
                   {roles.includes('rider') && (
-                    <Link to="/find-ride" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 shadow w-full md:w-auto active:scale-95 transition" style={{ background: 'var(--accent)', color: '#111' }} onClick={()=>setMobileOpen(false)}>
-                      <Search size={16} /> Find Ride
-                    </Link>
+                    <>
+                      <Link to="/find-ride" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 shadow w-full md:w-auto active:scale-95 transition" style={{ background: 'var(--accent)', color: '#111' }} onClick={()=>setMobileOpen(false)}>
+                        <Search size={16} /> Find Ride
+                      </Link>
+                    </>
                   )}
                   {roles.includes('driver') && (
-                    <Link to="/create-ride" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border w-full md:w-auto active:scale-95 transition" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }} onClick={()=>setMobileOpen(false)}>
-                      <UserPlus size={16} /> Create Ride
-                    </Link>
+                    <>
+                      <Link to="/create-ride" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border w-full md:w-auto active:scale-95 transition" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }} onClick={()=>setMobileOpen(false)}>
+                        <UserPlus size={16} /> Create Ride
+                      </Link>
+                      <Link to="/driver-dashboard" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border w-full md:w-auto active:scale-95 transition" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }} onClick={()=>setMobileOpen(false)}>
+                        <DashboardIcon size={16} /> Driver Dashboard
+                      </Link>
+                    </>
                   )}
                 </>
               ); })()}
@@ -193,6 +203,9 @@ function App() {
             <Route path="/find-ride" element={<FindRide />} />
             <Route path="/track" element={<Track />} />
             <Route path="/payment" element={<Payment />} />
+            <Route path="/driver-dashboard" element={<DriverDashboard />} />
+            <Route path="/ride-bookings/:rideId" element={<RideBookings />} />
+            <Route path="/debug" element={<Debug />} />
           </Routes>
           </motion.div>
         </main>

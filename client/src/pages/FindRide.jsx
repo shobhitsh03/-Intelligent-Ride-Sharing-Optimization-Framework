@@ -19,8 +19,9 @@ function FindRide() {
   const [loading, setLoading] = useState(false);
   const [maxDistanceMeters, setMaxDistance] = useState('');
   const [error, setError] = useState('');
-  const [etaFor, setEtaFor] = useState(null);
-  const [reasonFor, setReasonFor] = useState(null);
+  const [showAiPreferences, setShowAiPreferences] = useState(false);
+  const [reasonFor, setReasonFor] = useState(null); // For showing AI reasons
+  const [bookingModal, setBookingModal] = useState(null); // For booking confirmation modal
   const [etaData, setEtaData] = useState(null);
   const [etaLoading, setEtaLoading] = useState(false);
   const [notice, setNotice] = useState('');
@@ -154,24 +155,24 @@ function FindRide() {
   async function autoBookBest() {
     setError('');
     setNotice('');
+    
+    // Validate inputs first
+    if (!srcCoord || !dstCoord) {
+      setError('Please select both source and destination before auto-booking.');
+      return;
+    }
+    
+    if (!srcQuery.trim() || !dstQuery.trim()) {
+      setError('Please enter valid source and destination locations.');
+      return;
+    }
+    
     setLoading(true);
     try {
       const maxDist = Number(maxDistanceMeters) || 15000;
-      let sourceLoc;
-      let destLoc;
-      if (srcCoord) sourceLoc = { type: 'Point', coordinates: [srcCoord[1], srcCoord[0]] };
-      if (dstCoord) destLoc = { type: 'Point', coordinates: [dstCoord[1], dstCoord[0]] };
-      if (!sourceLoc) {
-        if (!navigator.geolocation) throw new Error('Provide source or allow location');
-        await new Promise((resolve) => navigator.geolocation.getCurrentPosition((pos) => {
-          const { latitude, longitude } = pos.coords;
-          setCenter([latitude, longitude]);
-          setSelfPos([latitude, longitude]);
-          sourceLoc = { type: 'Point', coordinates: [longitude, latitude] };
-          if (!destLoc) destLoc = sourceLoc;
-          resolve();
-        }, () => resolve()));
-      }
+      const sourceLoc = { type: 'Point', coordinates: [srcCoord[1], srcCoord[0]] };
+      const destLoc = { type: 'Point', coordinates: [dstCoord[1], dstCoord[0]] };
+      
       const { data } = await api.post('/api/booking/auto', {
         sourceLoc,
         destLoc,
@@ -179,16 +180,56 @@ function FindRide() {
         seats: Number(seats) || 1
       });
 
-      setNotice('Sent booking request to driver. You will be notified upon acceptance.');
-      // Optionally refresh rides to reflect any state
-      setRides((prev) => prev);
+      if (data.booking && data.ride) {
+        // Show booking confirmation modal instead of redirecting immediately
+        setBookingModal({
+          booking: data.booking,
+          ride: data.ride,
+          sourceQuery: srcQuery,
+          destQuery: dstQuery
+        });
+        setNotice('🎉 Best ride found! Please confirm your booking.');
+      } else {
+        setError('Auto-book failed: No response from server');
+      }
       setLoading(false);
     } catch (e) {
       const msg = e?.response?.data?.error || 'Auto-book failed';
       setError(msg);
       setLoading(false);
     }
-  
+  }
+
+  function confirmBooking() {
+    if (bookingModal) {
+      // Navigate to payment with booking details
+      navigate('/payment', { state: { 
+        bookingId: bookingModal.booking._id, 
+        amount: bookingModal.booking.amount 
+      }});
+      setBookingModal(null);
+    }
+  }
+
+  function cancelBooking() {
+    setBookingModal(null);
+    setNotice('');
+  }
+
+  async function cancelRideBooking() {
+    if (!bookingModal?.booking?._id) return;
+    
+    try {
+      setLoading(true);
+      await api.delete(`/api/booking/${bookingModal.booking._id}`);
+      setBookingModal(null);
+      setNotice('🚫 Booking cancelled successfully.');
+      setLoading(false);
+    } catch (e) {
+      const msg = e?.response?.data?.error || 'Failed to cancel booking';
+      setError(msg);
+      setLoading(false);
+    }
   }
 
   // Apply client-side filters (seats/time/destination distance)
@@ -435,7 +476,12 @@ function FindRide() {
                 <ButtonSecondary className="w-full h-12" onClick={()=>{ setRides([]); setError(''); setNotice(''); setEtaFor(null); setEtaData(null); setSrcQuery(''); setDstQuery(''); setSrcCoord(null); setDstCoord(null); setSrcOpts([]); setDstOpts([]); setSeats(1); setPickupTime(''); }}>Clear</ButtonSecondary>
               </div>
               <div className="md:col-span-2">
-                <Button className="w-full h-12" disabled={loading} onClick={autoBookBest}>
+                <Button 
+                  className="w-full h-12" 
+                  disabled={loading || !srcCoord || !dstCoord || !srcQuery.trim() || !dstQuery.trim()} 
+                  onClick={autoBookBest}
+                  style={(loading || !srcCoord || !dstCoord || !srcQuery.trim() || !dstQuery.trim()) ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}
+                >
                   Auto-book best
                 </Button>
               </div>
@@ -630,6 +676,142 @@ function FindRide() {
           )}
         </div>
       </div>
+
+      {/* Booking Confirmation Modal */}
+      <AnimatePresence>
+        {bookingModal && (
+          <motion.div
+            className="fixed inset-0 flex items-center justify-center p-4"
+            style={{ 
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 9999
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={cancelBooking}
+          >
+            <motion.div
+              className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ 
+                background: 'var(--surface)', 
+                color: 'var(--text)',
+                zIndex: 10000,
+                position: 'relative',
+                maxHeight: '85vh',
+                overflowY: 'auto'
+              }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold">Confirm Booking</h3>
+                <button
+                  onClick={cancelBooking}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">🚗 Ride Details</h4>
+                  <div className="space-y-2 text-sm" style={{ color: 'var(--muted)' }}>
+                    <div className="flex justify-between">
+                      <span>From:</span>
+                      <span className="font-medium" style={{ color: 'var(--text)' }}>{bookingModal.sourceQuery}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>To:</span>
+                      <span className="font-medium" style={{ color: 'var(--text)' }}>{bookingModal.destQuery}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Route:</span>
+                      <span className="font-medium" style={{ color: 'var(--text)' }}>{bookingModal.ride.source} → {bookingModal.ride.destination}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Seats:</span>
+                      <span className="font-medium" style={{ color: 'var(--text)' }}>{bookingModal.booking.seats}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Available Seats:</span>
+                      <span className="font-medium" style={{ color: 'var(--text)' }}>{bookingModal.ride.availableSeats}</span>
+                    </div>
+                    {bookingModal.ride.time && (
+                      <div className="flex justify-between">
+                        <span>Departure:</span>
+                        <span className="font-medium" style={{ color: 'var(--text)' }}>
+                          {new Date(bookingModal.ride.time).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">💰 Payment Details</h4>
+                  <div className="space-y-2 text-sm" style={{ color: 'var(--muted)' }}>
+                    <div className="flex justify-between">
+                      <span>Base Fare:</span>
+                      <span style={{ color: 'var(--text)' }}>₹{bookingModal.booking.amount / 100}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-semibold">
+                      <span>Total Amount:</span>
+                      <span style={{ color: 'var(--primary)' }}>₹{bookingModal.booking.amount / 100}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {bookingModal.ride.aiReason && (
+                  <div>
+                    <h4 className="font-medium mb-2">🤖 AI Recommendation</h4>
+                    <div className="text-sm" style={{ color: 'var(--muted)' }}>
+                      {bookingModal.ride.aiReason}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <ButtonSecondary onClick={cancelBooking}>
+                        Close Modal
+                      </ButtonSecondary>
+                      <Button onClick={confirmBooking}>
+                        Confirm & Pay
+                      </Button>
+                    </div>
+                    <Button 
+                      onClick={cancelRideBooking}
+                      disabled={loading}
+                      style={{ 
+                        background: '#dc2626', 
+                        color: 'white',
+                        width: '100%',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        padding: '12px 16px',
+                        border: '2px solid #dc2626',
+                        borderRadius: '8px'
+                      }}
+                      className="hover:bg-red-700 transition-colors"
+                    >
+                      {loading ? '⏳ Cancelling...' : '🚫 CANCEL RIDE BOOKING'}
+                    </Button>
+                  </div>
+                  <div className="mt-3 text-xs text-center font-medium" style={{ color: 'var(--muted)' }}>
+                    ⚠️ This will permanently delete your booking
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

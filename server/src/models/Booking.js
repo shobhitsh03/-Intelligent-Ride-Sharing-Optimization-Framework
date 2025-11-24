@@ -6,9 +6,9 @@ const BookingSchema = new mongoose.Schema(
     rider: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     seats: { type: Number, required: true, min: 1 },
     amount: { type: Number, required: true },
-    paymentProvider: { type: String, enum: ['razorpay', 'stripe'], required: true },
+    paymentProvider: { type: String, enum: ['razorpay', 'stripe', 'pending'], required: true },
     paymentId: { type: String },
-    status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' }
+    status: { type: String, enum: ['pending', 'confirmed', 'paid', 'cancelled'], default: 'pending' }
   },
   { timestamps: true }
 );

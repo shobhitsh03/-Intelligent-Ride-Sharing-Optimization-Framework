@@ -8,11 +8,16 @@ export function Card({ className = '', style, ...props }) {
   );
 }
 
-export function Button({ className = '', style, ...props }) {
+export function Button({ className = '', style, variant = 'primary', ...props }) {
+  const baseStyles = 'inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium shadow-sm transition active:scale-95';
+  const variantStyles = variant === 'secondary' 
+    ? { background: 'transparent', color: 'var(--text)', border: '1px solid rgba(0,0,0,0.15)' }
+    : { background: 'var(--accent)', color: '#111111' };
+  
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium shadow-sm transition active:scale-95 ${className}`}
-      style={{ background: 'var(--accent)', color: '#111111', ...style }}
+      className={`${baseStyles} ${className}`}
+      style={{ ...variantStyles, ...style }}
       {...props}
     />
   );

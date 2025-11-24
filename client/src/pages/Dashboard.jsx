@@ -8,6 +8,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notifications, setNotifications] = useState([]);
+  const [cancelModal, setCancelModal] = useState(null);
+  const [showRiderHistory, setShowRiderHistory] = useState(true);
+  const [showDriverHistory, setShowDriverHistory] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -18,7 +21,7 @@ export default function Dashboard() {
       try {
         const [ridesRes, booksRes] = await Promise.allSettled([
           api.get('/api/rides/mine'),
-          api.get('/api/booking/mine')
+          api.get('/api/booking/my')
         ]);
         if (mounted) {
           if (ridesRes.status === 'fulfilled') setDriverRides(ridesRes.value.data.rides || []);
@@ -47,7 +50,7 @@ export default function Dashboard() {
     try {
       const [ridesRes, booksRes] = await Promise.allSettled([
         api.get('/api/rides/mine'),
-        api.get('/api/booking/mine')
+        api.get('/api/booking/my')
       ]);
       if (ridesRes.status === 'fulfilled') setDriverRides(ridesRes.value.data.rides || []);
       if (booksRes.status === 'fulfilled') setRiderBookings(booksRes.value.data.bookings || []);
@@ -60,7 +63,6 @@ export default function Dashboard() {
       const next = arr.filter((n) => n.id !== id);
       localStorage.setItem('notifications', JSON.stringify(next));
       setNotifications(next);
-      window.dispatchEvent(new Event('notifications-updated'));
     } catch {}
   }
 
@@ -105,6 +107,28 @@ export default function Dashboard() {
     }
   }
 
+  const handleCancelBooking = async (booking) => {
+    setCancelModal(booking);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!cancelModal) return;
+    try {
+      await api.delete(`/api/booking/${cancelModal._id}`);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'success', message: '🚫 Ride cancelled successfully' } }));
+      setCancelModal(null);
+      refreshHistory(); // Refresh the bookings list
+    } catch (error) {
+      const msg = error?.response?.data?.error || 'Failed to cancel booking';
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { type: 'error', message: msg } }));
+      setCancelModal(null);
+    }
+  };
+
+  const cancelCancelBooking = () => {
+    setCancelModal(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -140,32 +164,120 @@ export default function Dashboard() {
               {!loading && !error && (
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <div>
-                    <div className="text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>As Rider</div>
-                    {riderBookings.length === 0 ? (
-                      <div className="text-sm" style={{ color: 'var(--muted)' }}>No bookings yet.</div>
-                    ) : (
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>As Rider</div>
+                      <button
+                        onClick={() => setShowRiderHistory(!showRiderHistory)}
+                        className="text-xs px-2 py-1 rounded border"
+                        style={{ borderColor: 'rgba(0,0,0,0.15)', color: 'var(--text)' }}
+                      >
+                        {showRiderHistory ? '▼ Hide' : '▶ Show'} ({riderBookings.length})
+                      </button>
+                    </div>
+                    {showRiderHistory && (
+                      <>
+                        {riderBookings.length === 0 ? (
+                          <div className="text-sm" style={{ color: 'var(--muted)' }}>No bookings yet.</div>
+                        ) : (
+                          <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
+                            {riderBookings.map((b) => (
+                              <li key={b._id} className="rounded border p-3 text-sm list-none" style={{ borderColor: 'rgba(0,0,0,0.08)', color: 'var(--text)' }}>
+                                <div className="flex justify-between items-start mb-2">
+                                  <div>
+                                    <div className="font-medium">{b?.ride?.source} → {b?.ride?.destination}</div>
+                                    <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                                      Seats: {b.seats} • Amount: ₹{b.amount} • Status: <span className={`px-1 py-0.5 rounded text-xs ${
+                                        b.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                        b.status === 'paid' ? 'bg-blue-100 text-blue-800' :
+                                        b.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }`}>{b.status}</span>
+                                    </div>
+                                  </div>
+                                  {(b.status === 'confirmed' || b.status === 'pending') && (
+                                    <button
+                                      onClick={() => handleCancelBooking(b)}
+                                      className="px-2 py-1 text-xs rounded hover:bg-red-700"
+                                      style={{ background: '#dc2626', color: 'white', border: '1px solid #dc2626' }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                                  Booked on: {new Date(b.createdAt).toLocaleDateString()}
+                                </div>
+                              </li>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {!showRiderHistory && riderBookings.length > 0 && (
                       <ul className="space-y-2">
-                        {riderBookings.map((b) => (
-                          <li key={b._id} className="rounded border px-3 py-2 text-sm" style={{ borderColor: 'rgba(0,0,0,0.08)', color: 'var(--text)' }}>
-                            <div>{b?.ride?.source} → {b?.ride?.destination}</div>
-                            <div className="text-xs" style={{ color: 'var(--muted)' }}>Seats: {b.seats} • Amount: ₹{b.amount} • Status: {b.status}</div>
+                        {riderBookings.slice(0, 2).map((b) => (
+                          <li key={b._id} className="rounded border p-2 text-sm opacity-75 list-none" style={{ borderColor: 'rgba(0,0,0,0.08)', color: 'var(--text)' }}>
+                            <div className="font-medium text-xs">{b?.ride?.source} → {b?.ride?.destination}</div>
+                            <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                              ₹{b.amount} • <span className={`px-1 py-0.5 rounded text-xs ${
+                                b.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                b.status === 'paid' ? 'bg-blue-100 text-blue-800' :
+                                b.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>{b.status}</span>
+                            </div>
                           </li>
                         ))}
+                        {riderBookings.length > 2 && (
+                          <div className="text-xs text-center p-2" style={{ color: 'var(--muted)' }}>
+                            ...and {riderBookings.length - 2} more
+                          </div>
+                        )}
                       </ul>
                     )}
                   </div>
                   <div>
-                    <div className="text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>As Driver</div>
-                    {driverRides.length === 0 ? (
-                      <div className="text-sm" style={{ color: 'var(--muted)' }}>No rides created yet.</div>
-                    ) : (
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>As Driver</div>
+                      <button
+                        onClick={() => setShowDriverHistory(!showDriverHistory)}
+                        className="text-xs px-2 py-1 rounded border"
+                        style={{ borderColor: 'rgba(0,0,0,0.15)', color: 'var(--text)' }}
+                      >
+                        {showDriverHistory ? '▼ Hide' : '▶ Show'} ({driverRides.length})
+                      </button>
+                    </div>
+                    {showDriverHistory && (
+                      <>
+                        {driverRides.length === 0 ? (
+                          <div className="text-sm" style={{ color: 'var(--muted)' }}>No rides created yet.</div>
+                        ) : (
+                          <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
+                            {driverRides.map((r) => (
+                              <li key={r._id} className="rounded border px-3 py-2 text-sm list-none" style={{ borderColor: 'rgba(0,0,0,0.08)', color: 'var(--text)' }}>
+                                <div>{r.source} → {r.destination}</div>
+                                <div className="text-xs" style={{ color: 'var(--muted)' }}>Seats: {r.availableSeats} • Fare: ₹{r.fare} • Status: {r.status}</div>
+                              </li>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {!showDriverHistory && driverRides.length > 0 && (
                       <ul className="space-y-2">
-                        {driverRides.map((r) => (
-                          <li key={r._id} className="rounded border px-3 py-2 text-sm" style={{ borderColor: 'rgba(0,0,0,0.08)', color: 'var(--text)' }}>
-                            <div>{r.source} → {r.destination}</div>
-                            <div className="text-xs" style={{ color: 'var(--muted)' }}>Seats: {r.availableSeats} • Fare: ₹{r.fare} • Status: {r.status}</div>
+                        {driverRides.slice(0, 2).map((r) => (
+                          <li key={r._id} className="rounded border p-2 text-sm opacity-75 list-none" style={{ borderColor: 'rgba(0,0,0,0.08)', color: 'var(--text)' }}>
+                            <div className="font-medium text-xs">{r.source} → {r.destination}</div>
+                            <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                              ₹{r.fare} • {r.availableSeats} seats
+                            </div>
                           </li>
                         ))}
+                        {driverRides.length > 2 && (
+                          <div className="text-xs text-center p-2" style={{ color: 'var(--muted)' }}>
+                            ...and {driverRides.length - 2} more
+                          </div>
+                        )}
                       </ul>
                     )}
                   </div>
@@ -236,6 +348,47 @@ export default function Dashboard() {
                 <li>Share your live location during a ride for accurate ETAs.</li>
                 <li>Use secure payments for bookings and receipts.</li>
               </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
+            <div className="text-center mb-6">
+              <div className="text-4xl mb-4">🚫</div>
+              <h3 className="text-xl font-semibold mb-2">Cancel Ride Booking?</h3>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                Are you sure you want to cancel your ride from <strong>{cancelModal.ride?.source || 'Unknown'}</strong> to <strong>{cancelModal.ride?.destination || 'Unknown'}</strong>?
+              </p>
+              <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
+                This action cannot be undone and your seat will be released.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm p-3 rounded-lg" style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#dc2626' }}>
+                <strong>⚠️ Important:</strong> Cancellation will release your seat and this booking will be permanently deleted.
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={cancelCancelBooking}
+                  className="px-3 py-2 rounded text-sm border"
+                  style={{ borderColor: 'rgba(0,0,0,0.15)', color: 'var(--text)' }}
+                >
+                  No, Keep Booking
+                </button>
+                <button
+                  onClick={confirmCancelBooking}
+                  style={{ background: '#dc2626', color: 'white', border: '1px solid #dc2626' }}
+                  className="px-3 py-2 rounded text-sm hover:bg-red-700"
+                >
+                  Yes, Cancel Ride
+                </button>
+              </div>
             </div>
           </div>
         </div>
