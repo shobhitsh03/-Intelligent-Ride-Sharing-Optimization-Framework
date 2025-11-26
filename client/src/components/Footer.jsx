@@ -20,7 +20,7 @@ export default function Footer() {
         <div>
           <div className="font-medium mb-2" style={{ color: '#e5e7eb' }}>Contact</div>
           <ul className="space-y-1" style={{ color: '#94a3b8' }}>
-            <li>Email: support@carpool.test</li>
+            <li>Email: <a className="hover:underline" style={{ color: '#94a3b8' }} href="https://mail.google.com/mail/?view=cm&to=routeshare@gmail.com" target="_blank" rel="noopener noreferrer">routeshare@gmail.com</a></li>
             <li>
               <a className="hover:underline" style={{ color: '#94a3b8' }} href="#">Privacy</a> •{' '}
               <a className="hover:underline" style={{ color: '#94a3b8' }} href="#">Terms</a>
@@ -29,7 +29,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="text-xs text-center pb-8" style={{ color: '#94a3b8' }}>
-        © {new Date().getFullYear()} Carpool. All rights reserved.
+        © {new Date().getFullYear()} Made by Shobhit Shukla & Kumar Tejaswa. All rights Reserved.
       </div>
     </footer>
   );

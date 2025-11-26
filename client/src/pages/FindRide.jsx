@@ -23,6 +23,7 @@ function FindRide() {
   const [reasonFor, setReasonFor] = useState(null); // For showing AI reasons
   const [bookingModal, setBookingModal] = useState(null); // For booking confirmation modal
   const [etaData, setEtaData] = useState(null);
+  const [etaFor, setEtaFor] = useState(null);
   const [etaLoading, setEtaLoading] = useState(false);
   const [notice, setNotice] = useState('');
   const [center, setCenter] = useState([28.6139, 77.2090]);

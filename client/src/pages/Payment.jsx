@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { Card, Button, Input, Select, Alert } from '../components/UI.jsx';
 import LoadingOverlay from '../components/LoadingOverlay.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Load Stripe
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY 
-  ? import('@stripe/stripe-js').then(Stripe => Stripe.default(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY))
-  : null;
-
 export default function Payment() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [amount, setAmount] = useState(5000); // in paise for Razorpay / cents for Stripe
   const [provider, setProvider] = useState('stripe'); // Default to Stripe
   const [bookingId, setBookingId] = useState('');
@@ -45,15 +41,20 @@ export default function Payment() {
       
       // Create booking placeholder if not provided
       let bid = bookingId;
-      if (!bid) {
-        const { data } = await api.post('/api/booking/create', {
-          rideId: rideId || 'demo',
-          seats: 1,
-          amount: bookingAmount,
-          paymentProvider: bookNowPayLater ? 'pending' : provider,
-        });
-        bid = data.booking?._id;
-        setBookingId(bid || '');
+      if (!bid && rideId && rideId !== 'demo') {
+        try {
+          const { data } = await api.post('/api/booking/create', {
+            rideId: rideId,
+            seats: 1,
+            amount: bookingAmount,
+            paymentProvider: bookNowPayLater ? 'pending' : provider,
+          });
+          bid = data.booking?._id;
+          setBookingId(bid || '');
+        } catch (bookingError) {
+          console.log('Booking creation failed, proceeding without booking:', bookingError.message);
+          // Continue with payment without booking
+        }
       }
 
       // If Book Now Pay Later, skip payment processing
@@ -90,40 +91,9 @@ export default function Payment() {
         };
         const rzp = new window.Razorpay(options);
         rzp.open();
-      } else if (provider === 'stripe' && orderData?.paymentIntent?.client_secret && stripePromise) {
-        try {
-          const stripe = await stripePromise;
-          const { error } = await stripe.confirmCardPayment(orderData.paymentIntent.client_secret, {
-            payment_method: {
-              card: {
-                // For demo purposes, using a test token
-                // In production, you'd collect card details from a form
-                token: 'tok_visa' // Test token
-              }
-            }
-          });
-
-          if (error) {
-            setMsg(error.message);
-            setType('error');
-          } else {
-            await api.post('/api/payment/verify', { 
-              provider, 
-              bookingId: bid, 
-              paymentId: orderData.paymentIntent.id, 
-              status: 'paid' 
-            });
-            setMsg('Payment success');
-            setType('success');
-            setSuccess(true);
-          }
-        } catch (stripeError) {
-          setMsg('Stripe payment failed: ' + stripeError.message);
-          setType('error');
-        }
-      } else if (provider === 'stripe') {
-        setMsg('Stripe not configured. Add VITE_STRIPE_PUBLISHABLE_KEY to your .env file');
-        setType('error');
+      } else if (provider === 'stripe' && orderData?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = orderData.url;
       } else {
         setMsg('Payment provider not ready');
         setType('error');
@@ -148,11 +118,11 @@ export default function Payment() {
             type="number" 
             value={amount} 
             onChange={(e)=>setAmount(e.target.value)} 
-            placeholder="Amount (₹)" 
+            placeholder="Amount ($)" 
             disabled={bookNowPayLater}
           />
           <div className="text-xs text-right" style={{ color: 'var(--muted)' }}>
-            {amount > 0 ? `₹${(amount / 100).toFixed(2)}` : '₹0.00'}
+            ${amount ? (amount / 100).toFixed(2) : '0.00'}
           </div>
           <Input placeholder="Booking ID (optional)" value={bookingId} onChange={(e)=>setBookingId(e.target.value)} />
           
@@ -172,9 +142,10 @@ export default function Payment() {
           
           <Button 
             className="w-full" 
-            onClick={bookNowPayLater ? () => startPayment() : startPayment}
+            onClick={startPayment}
+            disabled={loading}
           >
-            {bookNowPayLater ? 'Book Ride (Pay Later)' : 'Pay Now'}
+            {loading ? 'Processing...' : (bookNowPayLater ? 'Book Ride (Pay Later)' : `Pay $${(amount / 100).toFixed(2)}`)}
           </Button>
         </div>
         {msg && <Alert type={type}>{msg}</Alert>}

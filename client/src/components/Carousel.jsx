@@ -6,10 +6,10 @@ const defaultImages = [
   'https://images.unsplash.com/photo-1502877338535-766e1452684a?q=80&w=1920&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1501706362039-c06b2d715385?q=80&w=1920&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1920&auto=format&fit=crop&sat=-50',
-  'https://images.unsplash.com/photo-1519640350407-953bc0614f4e?q=80&w=1920&auto=format&fit=crop',
+  '/carousel1-city.svg',
   'https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1920&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1465447142348-e9952c393450?q=80&w=1920&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1506976785307-8732e854ad75?q=80&w=1920&auto=format&fit=crop'
+  '/carousel3-community.svg'
 ];
 
 const carSvg = `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'><rect x='6' y='10' width='40' height='12' rx='4' fill='#FFC043'/><circle cx='16' cy='24' r='4' fill='#111'/><circle cx='36' cy='24' r='4' fill='#111'/></svg>")}`;
