@@ -8,16 +8,16 @@ import { Car, Search as SearchIcon, UserPlus } from '../components/Icons.jsx';
 
 // simple lightweight illustrations (SVG data URIs)
 const illos = {
-  ride: `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#f8fafc'/><stop offset='100%' stop-color='#e5e7eb'/></linearGradient></defs><rect width='200' height='120' rx='14' fill='url(#g)'/><g transform='translate(20,40)'><rect x='0' y='20' width='100' height='28' rx='10' fill='#111'/><rect x='10' y='8' width='80' height='24' rx='8' fill='#fff'/><circle cx='22' cy='52' r='8' fill='#111'/><circle cx='78' cy='52' r='8' fill='#111'/></g></svg>")}`,
-  reserve: `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' rx='14' fill='#f3f4f6'/><g transform='translate(28,22)'><rect x='0' y='10' width='120' height='70' rx='8' fill='#fff' stroke='#d1d5db'/><rect x='0' y='0' width='120' height='16' rx='6' fill='#ef4444'/><circle cx='100' cy='72' r='12' fill='#111'/><rect x='16' y='34' width='16' height='10' rx='2' fill='#e5e7eb'/><rect x='36' y='34' width='16' height='10' rx='2' fill='#e5e7eb'/><rect x='56' y='34' width='16' height='10' rx='2' fill='#e5e7eb'/></g></svg>")}`,
-  intercity: `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' rx='14' fill='#eef2ff'/><g transform='translate(22,34)'><rect x='18' y='40' width='120' height='12' rx='6' fill='#111'/><rect x='0' y='28' width='90' height='24' rx='10' fill='#fff'/><circle cx='18' cy='58' r='8' fill='#111'/><circle cx='76' cy='58' r='8' fill='#111'/><rect x='120' y='14' width='16' height='38' rx='4' fill='#94a3b8'/></g></svg>")}`,
+  ride: '/card-ride.svg',
+  reserve: '/card-reserve.svg',
+  intercity: '/card-intercity.svg',
 };
 
 // timeline illustrations (lighter, colorful to match reference)
 const stepIllos = [
-  `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 140'><defs><linearGradient id='g1' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#fde68a'/><stop offset='100%' stop-color='#f59e0b'/></linearGradient></defs><rect width='240' height='140' rx='14' fill='url(#g1)'/><rect x='28' y='24' rx='14' width='110' height='60' fill='#ffffff' opacity='0.9'/><rect x='40' y='34' rx='6' width='86' height='14' fill='#111'/></svg>")}`,
-  `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 140'><defs><linearGradient id='g2' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#93c5fd'/><stop offset='100%' stop-color='#3b82f6'/></linearGradient></defs><rect width='240' height='140' rx='14' fill='url(#g2)'/><rect x='30' y='32' rx='8' width='120' height='70' fill='#ffffff'/><rect x='30' y='22' rx='6' width='120' height='14' fill='#111'/><rect x='164' y='54' rx='12' width='38' height='26' fill='#111'/></svg>")}`,
-  `data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 140'><defs><linearGradient id='g3' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='#c7d2fe'/><stop offset='100%' stop-color='#6366f1'/></linearGradient></defs><rect width='240' height='140' rx='14' fill='url(#g3)'/><rect x='36' y='70' width='140' height='10' rx='5' fill='#111'/><rect x='46' y='46' width='110' height='18' rx='8' fill='#fff'/><circle cx='60' cy='85' r='8' fill='#111'/><circle cx='126' cy='85' r='8' fill='#111'/></svg>")}`,
+  '/step1-search.svg',
+  '/step2-payment.svg',
+  '/step3-meet.svg',
 ];
 
 export default function Landing() {
@@ -143,29 +143,29 @@ export default function Landing() {
 
       {/* Stats */}
       <section className="grid md:grid-cols-3 gap-4">
-        <Card className="p-5 text-center">
-          <div className="text-2xl font-bold" style={{ color: 'var(--text)' }}>120+</div>
-          <div className="text-sm" style={{ color: 'var(--muted)' }}>Active rides today</div>
+        <Card className="p-5 text-center" style={{ background: 'rgba(17,17,17,0.9)', color: '#ffffff' }}>
+          <div className="text-2xl font-bold" style={{ color: '#ffffff' }}>120+</div>
+          <div className="text-sm" style={{ color: '#e5e7eb' }}>Active rides today</div>
         </Card>
-        <Card className="p-5 text-center">
-          <div className="text-2xl font-bold" style={{ color: 'var(--text)' }}>45</div>
-          <div className="text-sm" style={{ color: 'var(--muted)' }}>Cities covered</div>
+        <Card className="p-5 text-center" style={{ background: 'rgba(17,17,17,0.9)', color: '#ffffff' }}>
+          <div className="text-2xl font-bold" style={{ color: '#ffffff' }}>45</div>
+          <div className="text-sm" style={{ color: '#e5e7eb' }}>Cities covered</div>
         </Card>
-        <Card className="p-5 text-center">
-          <div className="text-2xl font-bold" style={{ color: 'var(--text)' }}>10k+</div>
-          <div className="text-sm" style={{ color: 'var(--muted)' }}>Happy riders</div>
+        <Card className="p-5 text-center" style={{ background: 'rgba(17,17,17,0.9)', color: '#ffffff' }}>
+          <div className="text-2xl font-bold" style={{ color: '#ffffff' }}>10k+</div>
+          <div className="text-sm" style={{ color: '#e5e7eb' }}>Happy riders</div>
         </Card>
       </section>
 
       {/* CTA banner */}
-      <Card className="p-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ background: 'linear-gradient(135deg, var(--surface), color-mix(in oklab, var(--primary) 6%, transparent))' }}>
+      <Card className="p-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ background: 'rgba(17,17,17,0.9)', backdropFilter: 'blur(8px)', color: '#ffffff' }}>
         <div>
-          <div className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Ready to start?</div>
-          <div className="text-sm" style={{ color: 'var(--muted)' }}>Find a ride or offer one in a few taps.</div>
+          <div className="text-lg font-semibold" style={{ color: '#ffffff' }}>Ready to start?</div>
+          <div className="text-sm" style={{ color: '#e5e7eb' }}>Find a ride or offer one in a few taps.</div>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/find-ride"><Button>Find Ride</Button></Link>
-          <Link to="/create-ride"><ButtonSecondary>Create Ride</ButtonSecondary></Link>
+          <Link to="/create-ride"><button className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border active:scale-95 transition" style={{ background: '#10b981', color: '#fff', borderColor: '#10b981' }}>Create Ride</button></Link>
         </div>
       </Card>
 
@@ -208,17 +208,17 @@ export default function Landing() {
           {
             title: 'Secure payments',
             desc: 'SSL and trusted gateways',
-            img: 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?q=80&w=256&auto=format&fit=crop'
+            img: '/badge-secure-payments.svg'
           },
           {
             title: 'Real-time tracking',
             desc: 'Live location updates',
-            img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=256&auto=format&fit=crop'
+            img: '/badge-realtime-tracking.svg'
           },
           {
             title: 'Community rated',
             desc: 'Quality via user reviews',
-            img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=256&auto=format&fit=crop'
+            img: '/badge-community-rated.svg'
           },
         ].map((b, i) => (
           <Card
@@ -236,36 +236,6 @@ export default function Landing() {
           </Card>
         ))}
       </section>
-
-      {/* Top routes near you (sample) */}
-      <Card className="p-6">
-        <div className="font-semibold mb-2" style={{ color: 'var(--text)' }}>Popular routes near you</div>
-        <ul className="grid md:grid-cols-3 gap-3 text-sm" style={{ color: 'var(--muted)' }}>
-          {['Koramangala → Whitefield', 'Andheri → BKC', 'Gurugram → Connaught Place', 'Noida → Nehru Place', 'Kondapur → Hitech City', 'Salt Lake → Park Street'].map((r, i)=> (
-            <li key={i} className="rounded-md border px-3 py-2" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>{r}</li>
-          ))}
-        </ul>
-      </Card>
-
-      {/* App badges + newsletter */}
-      <Card className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <div className="font-semibold" style={{ color: 'var(--text)' }}>Get the app</div>
-          <div className="text-sm" style={{ color: 'var(--muted)' }}>Faster access and instant notifications.</div>
-          <div className="mt-3 flex gap-2">
-            <ButtonSecondary>App Store</ButtonSecondary>
-            <ButtonSecondary>Google Play</ButtonSecondary>
-          </div>
-        </div>
-        <div className="w-full md:w-auto">
-          <div className="font-semibold" style={{ color: 'var(--text)' }}>Subscribe</div>
-          <div className="text-sm" style={{ color: 'var(--muted)' }}>Get product updates and offers.</div>
-          <div className="mt-2 flex items-center gap-2">
-            <Input placeholder="Your email" />
-            <Button>Subscribe</Button>
-          </div>
-        </div>
-      </Card>
 
     </div>
   );

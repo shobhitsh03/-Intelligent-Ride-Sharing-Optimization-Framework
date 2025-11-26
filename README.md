@@ -133,6 +133,10 @@ carpool-mern/
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## © Copyright
+
+Made by Shobhit Shukla & Kumar Tejaswa. All rights Reserved.
+
 ## 🙏 Acknowledgments
 
 - Mistral AI for the powerful language model

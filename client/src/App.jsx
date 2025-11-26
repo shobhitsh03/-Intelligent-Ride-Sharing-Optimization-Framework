@@ -9,6 +9,8 @@ import CreateRide from './pages/CreateRide.jsx';
 import FindRide from './pages/FindRide.jsx';
 import Track from './pages/Track.jsx';
 import Payment from './pages/Payment.jsx';
+import PaymentSuccess from './pages/PaymentSuccess.jsx';
+import PaymentCancel from './pages/PaymentCancel.jsx';
 import Forgot from './pages/Forgot.jsx';
 import Reset from './pages/Reset.jsx';
 import DriverDashboard from './pages/DriverDashboard.jsx';
@@ -126,8 +128,21 @@ function App() {
     <div className="min-h-screen">
         <nav className="border-b sticky top-0 z-10" style={{ background: 'rgba(17,17,17,0.9)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.06)' }}>
           <div className="max-w-6xl mx-auto px-4 md:px-5 py-2 md:py-3 flex flex-wrap gap-3 md:gap-6 items-center">
-            <Link to="/" className="font-semibold tracking-tight flex items-center gap-2" style={{ color: '#f5f5f5' }}>
-              <Car size={18} /> Carpool
+            <Link to="/" className="font-semibold tracking-tight flex items-center gap-2">
+              <img src="/Screenshot 2025-11-25 at 3.58.02 PM.png" alt="RouteShare Logo" className="h-8 w-8 rounded-full object-cover" /> 
+              <span style={{ 
+                color: '#fbbf24',
+                fontSize: '1.25rem',
+                fontWeight: '700',
+                marginRight: '-6px',
+                letterSpacing: '-1px'
+              }}>Route</span>
+              <span style={{ 
+                color: '#ffffff',
+                fontSize: '1.25rem',
+                fontWeight: '700',
+                letterSpacing: '-1px'
+              }}>Share</span>
             </Link>
             <div className="ml-auto flex items-center gap-2">
               <button aria-label="Toggle menu" aria-expanded={mobileOpen} onClick={()=>setMobileOpen(o=>!o)} className="md:hidden rounded px-2 py-1 text-sm border" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }}>
@@ -203,6 +218,8 @@ function App() {
             <Route path="/find-ride" element={<FindRide />} />
             <Route path="/track" element={<Track />} />
             <Route path="/payment" element={<Payment />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/driver-dashboard" element={<DriverDashboard />} />
             <Route path="/ride-bookings/:rideId" element={<RideBookings />} />
             <Route path="/debug" element={<Debug />} />
