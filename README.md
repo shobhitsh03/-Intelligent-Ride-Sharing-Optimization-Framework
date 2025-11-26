@@ -8,7 +8,7 @@ A full-stack MERN (MongoDB, Express, React, Node.js) application that provides i
 - **Real-time Updates**: Live tracking and notifications using Socket.IO
 - **AI Explanations**: ML-powered reasoning for ride recommendations
 - **Secure Authentication**: JWT-based user authentication
-- **Payment Integration**: Supports multiple payment gateways (Stripe, Razorpay)
+- **Payment Integration**: Supports Stripe payment gateway
 - **Interactive Map**: Real-time ride visualization with Leaflet
 - **Responsive Design**: Works on desktop and mobile devices
 
