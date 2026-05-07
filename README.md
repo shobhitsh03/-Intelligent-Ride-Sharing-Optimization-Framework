@@ -131,7 +131,7 @@ carpool-mern/
 
 ## © Copyright
 
-Made by Shobhit Shukla & Kumar Tejaswa. All rights Reserved.
+Made by Shobhit Shukla . All rights Reserved.
 
 ## 🙏 Acknowledgments
 
