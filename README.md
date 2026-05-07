@@ -45,7 +45,7 @@ A full-stack MERN (MongoDB, Express, React, Node.js) application that provides i
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/carpool-mern.git
+   git clone (https://github.com/shobhitsh03/-Intelligent-Ride-Sharing-Optimization-Framework.git)
    cd carpool-mern
    ```
 
