@@ -16,7 +16,21 @@ const RideSchema = new mongoose.Schema(
     availableSeats: { type: Number, required: true, min: 1 },
     fare: { type: Number, required: true, min: 0 },
     time: { type: Date, required: true },
-    status: { type: String, enum: ['open', 'booked', 'completed', 'cancelled'], default: 'open' }
+    status: { type: String, enum: ['open', 'booked', 'completed', 'cancelled'], default: 'open' },
+    vehicle: { type: String, enum: ['car', 'suv', 'bike'], default: 'car' },
+    subtype: { type: String },
+    plate: { type: String },
+    vehiclePhoto: { type: String },
+    amenities: {
+      ac: { type: Boolean, default: true },
+      music: { type: Boolean, default: false },
+      luggage: { type: Boolean, default: false }
+    },
+    // Blockchain fields for tamper-evident ledger
+    blockIndex: { type: Number, default: 0 },
+    previousHash: { type: String, default: '0' },
+    blockHash: { type: String, required: false }, // Made optional for backward compatibility
+    blockTimestamp: { type: Date, default: Date.now }
   },
   { timestamps: true }
 );

@@ -9,9 +9,17 @@ import authRoutes from './routes/auth.js';
 import rideRoutes from './routes/rides.js';
 import bookingRoutes from './routes/booking.js';
 import paymentRoutes from './routes/payment.js';
+import aiChatRoutes from './routes/aiChatSimple.js';
 import initSockets from './socket.js';
 
+// Load environment variables from .env file
 dotenv.config();
+
+// Set default JWT_SECRET if not provided
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'your-secret-key-change-in-production';
+  console.log('Using default JWT_SECRET for development');
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/ai', aiChatRoutes);
 
 // Sockets
 initSockets(io);

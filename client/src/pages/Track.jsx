@@ -60,7 +60,6 @@ export default function Track() {
             <div className="text-sm" style={{ color: 'var(--muted)' }}>Join a ride room to receive live location updates.</div>
             <div className="flex items-center gap-2">
               <Input value={rideId} onChange={(e)=>setRideId(e.target.value)} placeholder="Ride ID" />
-              <ButtonSecondary onClick={()=>setHistory([])}>Clear path</ButtonSecondary>
             </div>
             <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
               Status: {coords ? <Badge tone="success">Live</Badge> : <Badge>Idle</Badge>}

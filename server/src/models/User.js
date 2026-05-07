@@ -13,7 +13,14 @@ const UserSchema = new mongoose.Schema(
       coordinates: { type: [Number], default: [0, 0] } // [lng, lat]
     },
     resetToken: { type: String },
-    resetTokenExpires: { type: Date }
+    resetTokenExpires: { type: Date },
+    // Wallet balance for internal payment system
+    walletBalance: { type: Number, default: 0 },
+    savedPaymentMethods: [{
+      type: { type: String, enum: ['credit_card', 'upi'] },
+      details: mongoose.Schema.Types.Mixed, // Encrypted payment details
+      isDefault: { type: Boolean, default: false }
+    }]
   },
   { timestamps: true }
 );

@@ -4,6 +4,7 @@ import Booking from '../models/Booking.js';
 import Ride from '../models/Ride.js';
 import auth from '../middleware/auth.js';
 import { aiRankRides } from '../services/aiService.js';
+import { prepareBookingData, createBlock, createGenesisBlock } from '../services/blockchainService.js';
 
 const router = Router();
 
@@ -16,18 +17,43 @@ router.post('/create', auth('rider'), async (req, res) => {
 
     // Allow zero amount for "Book Now, Pay Later"
     const bookingAmount = amount || 0;
-    
+
     // Allow 'pending' as payment provider for pay later bookings
     const validPaymentProvider = paymentProvider || (bookingAmount === 0 ? 'pending' : 'stripe');
 
-    // Auto-confirm booking - no driver acceptance needed
-    const booking = await Booking.create({
+    // Get the last booking to link in the blockchain
+    const lastBooking = await Booking.findOne().sort({ blockIndex: -1 });
+
+    // Prepare booking data
+    const bookingData = {
       ride: ride._id,
       rider: req.user.id,
       seats,
       amount: bookingAmount,
       paymentProvider: validPaymentProvider,
-      status: bookingAmount === 0 ? 'confirmed' : 'confirmed' // Auto-confirm all bookings
+      status: 'confirmed' // Auto-confirm all bookings
+    };
+
+    let block;
+    if (!lastBooking) {
+      // Create genesis block (first block)
+      block = createGenesisBlock(prepareBookingData(bookingData));
+    } else {
+      // Create new block linking to previous
+      block = createBlock(
+        prepareBookingData(bookingData),
+        lastBooking.blockHash,
+        lastBooking.blockIndex + 1
+      );
+    }
+
+    // Auto-confirm booking - no driver acceptance needed
+    const booking = await Booking.create({
+      ...bookingData,
+      blockIndex: block.index,
+      previousHash: block.previousHash,
+      blockHash: block.blockHash,
+      blockTimestamp: block.timestamp
     });
 
     // Update ride seats immediately
@@ -109,6 +135,36 @@ router.get('/my', auth('rider'), async (req, res) => {
   } catch (e) {
     console.error('Error fetching bookings:', e);
     res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+
+// Get a single booking with ride and driver details
+router.get('/:id', auth('rider'), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('ride')
+      .populate({
+        path: 'ride',
+        populate: { path: 'driver', select: 'name email phone' }
+      });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Verify the booking belongs to the user
+    if (booking.rider.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    res.json({
+      booking,
+      ride: booking.ride,
+      driver: booking.ride?.driver
+    });
+  } catch (e) {
+    console.error('Error fetching booking:', e);
+    res.status(500).json({ error: 'Failed to fetch booking' });
   }
 });
 

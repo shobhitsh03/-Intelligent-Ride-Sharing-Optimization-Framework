@@ -19,14 +19,32 @@ import Debug from './pages/Debug.jsx';
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Car, Search, UserPlus, LogIn, LogOut, Menu as MenuIcon, Sun, Moon, DashboardIcon } from './components/Icons.jsx';
+import { LogoIcon } from './components/LogoIcon.jsx';
+import ChatWidget from './components/ChatWidget.jsx';
 import { motion } from 'framer-motion';
 import Footer from './components/Footer.jsx';
+
+// Helper function to check if user is a rider and show alert
+const handleCreateRideClick = (e, navigate) => {
+  e.preventDefault();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const roles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
+  
+  if (roles.includes('rider') && !roles.includes('driver')) {
+    alert('You are logged in as a Rider. Only Drivers can create rides. Please register as a Driver to create rides.');
+    return false;
+  }
+  
+  navigate('/create-ride');
+  return true;
+};
 
 function App() {
   const [token, setToken] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('token') : null));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => (typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false));
   const [logoutBlink, setLogoutBlink] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [toasts, setToasts] = useState([]);
   const socketRef = useRef(null);
   const navigate = useNavigate();
@@ -122,86 +140,166 @@ function App() {
     localStorage.removeItem('user');
     setToken(null);
     navigate('/');
+    setShowLogoutConfirm(false);
+  }
+
+  function handleLogoutClick() {
+    setShowLogoutConfirm(true);
+  }
+
+  function cancelLogout() {
+    setShowLogoutConfirm(false);
   }
 
   return (
     <div className="min-h-screen">
-        <nav className="border-b sticky top-0 z-10" style={{ background: 'rgba(17,17,17,0.9)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.06)' }}>
-          <div className="max-w-6xl mx-auto px-4 md:px-5 py-2 md:py-3 flex flex-wrap gap-3 md:gap-6 items-center">
-            <Link to="/" className="font-semibold tracking-tight flex items-center gap-2">
-              <img src="/Screenshot 2025-11-25 at 3.58.02 PM.png" alt="RouteShare Logo" className="h-8 w-8 rounded-full object-cover" /> 
-              <span style={{ 
-                color: '#fbbf24',
-                fontSize: '1.25rem',
-                fontWeight: '700',
-                marginRight: '-6px',
-                letterSpacing: '-1px'
-              }}>Route</span>
-              <span style={{ 
-                color: '#ffffff',
-                fontSize: '1.25rem',
-                fontWeight: '700',
-                letterSpacing: '-1px'
-              }}>Share</span>
-            </Link>
-            <div className="ml-auto flex items-center gap-2">
-              <button aria-label="Toggle menu" aria-expanded={mobileOpen} onClick={()=>setMobileOpen(o=>!o)} className="md:hidden rounded px-2 py-1 text-sm border" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }}>
-                <MenuIcon size={18} />
-              </button>
-            </div>
-            <div className={`${mobileOpen ? 'flex' : 'hidden'} w-full flex-col gap-2 pt-2 md:pt-0 md:w-auto md:flex md:flex-row md:items-center md:gap-6 md:ml-6`}> 
-              {(() => { const u = (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null); const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []); return (
-                <>
-                  {roles.includes('rider') && (
-                    <>
-                      <Link to="/find-ride" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 shadow w-full md:w-auto active:scale-95 transition" style={{ background: 'var(--accent)', color: '#111' }} onClick={()=>setMobileOpen(false)}>
-                        <Search size={16} /> Find Ride
-                      </Link>
-                    </>
-                  )}
-                  {roles.includes('driver') && (
-                    <>
-                      <Link to="/create-ride" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border w-full md:w-auto active:scale-95 transition" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }} onClick={()=>setMobileOpen(false)}>
-                        <UserPlus size={16} /> Create Ride
-                      </Link>
-                      <Link to="/driver-dashboard" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border w-full md:w-auto active:scale-95 transition" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }} onClick={()=>setMobileOpen(false)}>
-                        <DashboardIcon size={16} /> Driver Dashboard
-                      </Link>
-                    </>
-                  )}
-                </>
-              ); })()}
-              
-              {!token ? (
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3 w-full md:w-auto">
-                  <Link to="/login" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border w-full md:w-auto active:scale-95 transition" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }} onClick={()=>setMobileOpen(false)}><LogIn size={16}/> Login</Link>
-                  <Link to="/register" className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 w-full md:w-auto active:scale-95 transition" style={{ background: 'var(--accent)', color: '#111' }} onClick={()=>setMobileOpen(false)}><UserPlus size={16}/> Register</Link>
+        <nav className="sticky top-0 z-50 border-b" style={{ background: 'var(--navbar-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderColor: 'var(--navbar-border)' }}>
+          <div className="max-w-7xl mx-auto px-6 md:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Link to="/" className="flex items-center gap-3 group">
+                <div className="h-10 w-10 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300" style={{ background: isDark ? 'linear-gradient(135deg, #6366F1 0%, #22D3EE 100%)' : 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}>
+                  <LogoIcon size={28} className="text-white" />
                 </div>
-              ) : (
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3 md:ml-auto w-full md:w-auto">
+                <div className="flex items-center gap-2">
+                  <div>
+                    <span style={{ 
+                      color: 'var(--brand)',
+                      fontSize: '1.75rem',
+                      fontWeight: '800',
+                      letterSpacing: '-0.02em'
+                    }}>Ride</span>
+                    <span style={{ 
+                      color: 'var(--text)',
+                      fontSize: '1.75rem',
+                      fontWeight: '800',
+                      letterSpacing: '-0.02em'
+                    }}>Flex</span>
+                  </div>
                   {(() => { const u = (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null); const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []); const label = roles.includes('driver') && roles.includes('rider') ? 'Driver & Rider' : roles.includes('driver') ? 'Driver' : roles.includes('rider') ? 'Rider' : 'User'; return (
-                    <span className="block w-full text-center md:w-auto text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }}>Logged in as {label}</span>
+                    <span className="hidden md:inline-block px-2 py-1 text-xs font-semibold rounded-lg" style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%)', color: '#111' }}>
+                      {label}
+                    </span>
                   ); })()}
-                  <button
-                    onClick={()=>{
-                      setLogoutBlink(true);
-                      setTimeout(()=>{ setLogoutBlink(false); logout(); setMobileOpen(false); }, 180);
-                    }}
-                    className={`rounded-full p-2 border flex items-center justify-center w-full md:w-auto transition active:scale-95 ${logoutBlink ? 'animate-pulse' : ''} hover:bg-white/10`}
-                    style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }}
-                    aria-label="Logout"
-                    title="Logout"
-                  >
-                    <LogOut size={16}/>
-                  </button>
-                  <Link to="/dashboard" aria-label="Dashboard" className="rounded-full p-2 border flex items-center justify-center w-full md:w-auto hover:bg-white/10 active:scale-95 transition" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#a3a3a3' }} onClick={()=>setMobileOpen(false)}>
-                    <DashboardIcon size={16} />
-                  </Link>
-                  <button onClick={toggleDark} className="rounded px-2 py-1 text-xs border flex items-center justify-center gap-1 w-full md:w-auto" style={{ borderColor: 'rgba(255,255,255,0.12)', color: '#e5e7eb' }} aria-label="Toggle theme">
-                    {isDark ? <Moon size={16} /> : <Sun size={16} />}
-                  </button>
                 </div>
-              )}
+              </Link>
+              
+              <div className="hidden md:flex items-center gap-1">
+                {(() => { const u = (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null); const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []); return (
+                  <>
+                    {roles.includes('rider') && (
+                      <Link to="/find-ride" className="px-5 py-2.5 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2" style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%)', color: '#111' }}>
+                        <Search size={16} />
+                        Find Ride
+                      </Link>
+                    )}
+                    {roles.includes('driver') && (
+                      <>
+                        <Link to="/create-ride" onClick={(e) => handleCreateRideClick(e, navigate)} className="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-white/5" style={{ color: 'var(--text)' }}>
+                          Create Ride
+                        </Link>
+                        <Link to="/driver-dashboard" className="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-white/5" style={{ color: 'var(--text)' }}>
+                          Dashboard
+                        </Link>
+                      </>
+                    )}
+                  </>
+                ); })()}
+                
+                {!token ? (
+                  <div className="flex items-center gap-2 ml-4">
+                    <Link to="/login" className="px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200 hover:bg-white/5" style={{ borderColor: 'var(--glass-border)', color: 'var(--text)' }}>
+                      Login
+                    </Link>
+                    <Link to="/register" className="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200" style={{ background: 'var(--brand)', color: 'white' }}>
+                      Sign Up
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 ml-4">
+                    <Link to="/dashboard" className="p-2.5 rounded-xl transition-all duration-200 hover:scale-110 shadow-lg hover:shadow-xl" style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%)', color: 'white' }} aria-label="Dashboard">
+                      <DashboardIcon size={18} />
+                    </Link>
+                    <button onClick={toggleDark} className="p-2.5 rounded-xl transition-all duration-200 hover:scale-110 shadow-lg hover:shadow-xl" style={{ background: 'var(--surface)', color: 'var(--brand)', border: '1px solid var(--glass-border)' }} aria-label="Toggle theme">
+                      {isDark ? <Moon size={18} /> : <Sun size={18} />}
+                    </button>
+                    <button
+                      onClick={()=>{
+                        setLogoutBlink(true);
+                        setTimeout(()=>{ setLogoutBlink(false); handleLogoutClick(); }, 180);
+                      }}
+                      className={`p-2.5 rounded-xl transition-all duration-200 hover:scale-110 shadow-lg hover:shadow-xl ${logoutBlink ? 'animate-pulse' : ''}`}
+                      style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white' }}
+                      aria-label="Logout"
+                    >
+                      <LogOut size={18}/>
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="md:hidden flex items-center">
+                <button aria-label="Toggle menu" aria-expanded={mobileOpen} onClick={()=>setMobileOpen(o=>!o)} className="p-2.5 rounded-xl transition-all duration-200 hover:scale-110 shadow-lg" style={{ background: 'var(--brand)', color: 'white' }}>
+                  <MenuIcon size={20} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Mobile Menu */}
+            <div className={`${mobileOpen ? 'flex' : 'hidden'} md:hidden border-t`} style={{ borderColor: 'var(--glass-border)' }}>
+              <div className="py-4 space-y-2">
+                {(() => { const u = (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null); const roles = Array.isArray(u?.roles) ? u.roles : (u?.role ? [u.role] : []); return (
+                  <>
+                    {roles.includes('rider') && (
+                      <Link to="/find-ride" className="block mx-6 px-6 py-3 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2" style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%)', color: '#111' }} onClick={()=>setMobileOpen(false)}>
+                        <Search size={16} />
+                        Find Ride
+                      </Link>
+                    )}
+                    {roles.includes('driver') && (
+                      <>
+                        <Link to="/create-ride" onClick={(e) => { handleCreateRideClick(e, navigate); setMobileOpen(false); }} className="block px-6 py-3 text-sm font-medium transition-colors hover:bg-white/5" style={{ color: 'var(--text)' }}>
+                          Create Ride
+                        </Link>
+                        <Link to="/driver-dashboard" className="block px-6 py-3 text-sm font-medium transition-colors hover:bg-white/5" style={{ color: 'var(--text)' }} onClick={()=>setMobileOpen(false)}>
+                          Dashboard
+                        </Link>
+                      </>
+                    )}
+                    
+                    {!token ? (
+                      <div className="pt-4 border-t" style={{ borderColor: 'var(--glass-border)' }}>
+                        <Link to="/login" className="block px-6 py-3 text-sm font-medium transition-colors hover:bg-white/5" style={{ color: 'var(--text)' }} onClick={()=>setMobileOpen(false)}>
+                          Login
+                        </Link>
+                        <Link to="/register" className="block px-6 py-3 text-sm font-medium transition-colors" style={{ color: 'var(--brand)' }} onClick={()=>setMobileOpen(false)}>
+                          Sign Up
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="pt-4 border-t flex items-center justify-between px-6" style={{ borderColor: 'var(--glass-border)' }}>
+                        <div className="flex items-center gap-2">
+                          <Link to="/dashboard" className="p-2.5 rounded-xl transition-all duration-200 hover:scale-110 shadow-lg" style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%)', color: 'white' }} onClick={()=>setMobileOpen(false)}>
+                            <DashboardIcon size={18} />
+                          </Link>
+                          <button onClick={toggleDark} className="p-2.5 rounded-xl transition-all duration-200 hover:scale-110 shadow-lg" style={{ background: 'var(--surface)', color: 'var(--brand)', border: '1px solid var(--glass-border)' }}>
+                            {isDark ? <Moon size={18} /> : <Sun size={18} />}
+                          </button>
+                          <button
+                            onClick={()=>{
+                              setLogoutBlink(true);
+                              setTimeout(()=>{ setLogoutBlink(false); handleLogoutClick(); }, 180);
+                            }}
+                            className={`p-2.5 rounded-xl transition-all duration-200 hover:scale-110 shadow-lg ${logoutBlink ? 'animate-pulse' : ''}`}
+                            style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white' }}
+                          >
+                            <LogOut size={18}/>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ); })()}
+              </div>
             </div>
           </div>
         </nav>
@@ -237,6 +335,54 @@ function App() {
             ))}
           </div>
         </div>
+        
+        {/* AI Chat Widget */}
+        <ChatWidget />
+        
+        {/* Logout Confirmation Dialog */}
+        {showLogoutConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200]"
+            onClick={cancelLogout}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <LogOut size={24} className="text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Confirm Logout
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
+                  Are you sure you want to logout? You'll need to sign in again to access your account.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={cancelLogout}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </div>
   );
 }

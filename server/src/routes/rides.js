@@ -3,14 +3,33 @@ import Ride from '../models/Ride.js';
 import auth from '../middleware/auth.js';
 import { aiRankRides } from '../services/aiService.js';
 import { planItineraries } from '../services/aiPlanner.js';
+import { prepareRideData, createBlock, createGenesisBlock } from '../services/blockchainService.js';
 
 const router = Router();
+
+// Get all available rides (for riders to browse)
+router.get('/', async (req, res) => {
+  try {
+    const rides = await Ride.find({ status: 'open' })
+      .populate('driver', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json({ rides });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch rides' });
+  }
+});
 
 // Driver creates a ride
 router.post('/create', auth('driver'), async (req, res) => {
   try {
-    const { source, destination, sourceLoc, destLoc, availableSeats, fare, time } = req.body;
-    const ride = await Ride.create({
+    const { source, destination, sourceLoc, destLoc, availableSeats, fare, time, vehicle, subtype, plate, vehiclePhoto, amenities } = req.body;
+
+    // Get the last ride to link in the blockchain
+    const lastRide = await Ride.findOne().sort({ blockIndex: -1 });
+
+    // Prepare ride data
+    const rideData = {
       driver: req.user.id,
       source,
       destination,
@@ -18,10 +37,38 @@ router.post('/create', auth('driver'), async (req, res) => {
       destLoc,
       availableSeats,
       fare,
-      time
+      time,
+      vehicle,
+      subtype,
+      plate,
+      vehiclePhoto,
+      amenities
+    };
+
+    let block;
+    if (!lastRide) {
+      // Create genesis block (first block)
+      block = createGenesisBlock(prepareRideData(rideData));
+    } else {
+      // Create new block linking to previous
+      block = createBlock(
+        prepareRideData(rideData),
+        lastRide.blockHash,
+        lastRide.blockIndex + 1
+      );
+    }
+
+    const ride = await Ride.create({
+      ...rideData,
+      blockIndex: block.index,
+      previousHash: block.previousHash,
+      blockHash: block.blockHash,
+      blockTimestamp: block.timestamp
     });
+
     res.json({ ride });
   } catch (e) {
+    console.error('Error creating ride:', e);
     res.status(500).json({ error: 'Failed to create ride' });
   }
 });
@@ -82,8 +129,6 @@ router.post('/match', async (req, res) => {
   }
 });
 
-export default router;
-
 // New: AI itineraries
 router.post('/itineraries', async (req, res) => {
   try {
@@ -98,3 +143,5 @@ router.post('/itineraries', async (req, res) => {
     res.status(500).json({ error: 'Itineraries failed' });
   }
 });
+
+export default router;

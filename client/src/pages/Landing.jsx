@@ -2,9 +2,24 @@ import { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { motion } from 'framer-motion';
 import Carousel from '../components/Carousel.jsx';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button, ButtonSecondary, Card, Input } from '../components/UI.jsx';
-import { Car, Search as SearchIcon, UserPlus } from '../components/Icons.jsx';
+import { Car, Search, MapPin, Shield, Zap, Users, Star, Clock, CreditCard, Navigation, CheckCircle, TrendingUp, Award, Heart, ArrowRight } from 'lucide-react';
+
+// Helper function to check if user is a rider and show alert
+const handleCreateRideClick = (e, navigate) => {
+  e.preventDefault();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const roles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
+  
+  if (roles.includes('rider') && !roles.includes('driver')) {
+    alert('You are logged in as a Rider. Only Drivers can create rides. Please register as a Driver to create rides.');
+    return false;
+  }
+  
+  navigate('/create-ride');
+  return true;
+};
 
 // simple lightweight illustrations (SVG data URIs)
 const illos = {
@@ -21,6 +36,7 @@ const stepIllos = [
 ];
 
 export default function Landing() {
+  const navigate = useNavigate();
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -45,157 +61,282 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="space-y-8">
-      <section className="relative rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+    <div className="space-y-12">
+      {/* Professional Hero Section */}
+      <section className="relative rounded-2xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
         <Carousel className="border-0" />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.10) 40%, rgba(0,0,0,0.35))' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.6))' }} />
         <motion.div
-          className="absolute left-6 right-6 bottom-6 md:left-10 md:right-10 md:bottom-8"
-          initial={{ opacity: 0, y: 12 }}
+          className="absolute left-6 right-6 bottom-6 md:left-12 md:right-12 md:bottom-10"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.6 }}
         >
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight drop-shadow-md" style={{ color: '#ffffff' }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--brand)' }}>
+              <Car size={24} style={{ color: '#fbbf24' }} />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
+                <CheckCircle size={12} className="inline mr-1" />
+                Live Tracking
+              </div>
+              <div className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}>
+                <Shield size={12} className="inline mr-1" />
+                Secure
+              </div>
+            </div>
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight drop-shadow-lg" style={{ color: '#ffffff' }}>
             Go anywhere, together
           </h1>
-          <p className="mt-2 text-sm md:text-base max-w-2xl drop-shadow" style={{ color: '#f3f4f6' }}>
-            Book affordable carpools with live tracking, secure payments, and AI‑smart matching.
+          <p className="mt-4 text-base md:text-lg max-w-3xl drop-shadow" style={{ color: '#f3f4f6' }}>
+            Book affordable carpools with live tracking, secure payments, and AI‑smart matching. Save money while reducing your carbon footprint.
           </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/find-ride">
+              <button className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2" style={{ background: 'var(--brand)', color: '#111' }}>
+                <Search size={18} />
+                Find a Ride
+              </button>
+            </Link>
+            <button onClick={(e) => handleCreateRideClick(e, navigate)} className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
+              <Car size={18} />
+              Create a Ride
+            </button>
+          </div>
         </motion.div>
       </section>
 
       {loading && <div className="text-sm" style={{ color: 'var(--muted)' }}>Loading recommendations...</div>}
 
       {/* Feature cards */}
-      <section className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {[{
-          title: 'Ride',
-          desc: 'Find nearby rides with live maps and smart matching. Book in seconds and track pickup in real time.',
-          img: illos.ride,
-          to: '/find-ride',
-          cta: 'Find rides'
-        }, {
-          title: 'Reserve',
-          desc: 'Plan ahead. Pick a pickup time on the Find Ride page to reserve your seat for later.',
-          img: illos.reserve,
-          to: '/find-ride',
-          cta: 'Reserve now'
-        }, {
-          title: 'Intercity',
-          desc: 'Affordable outstation trips. Search routes between cities and pick the best option for you.',
-          img: illos.intercity,
-          to: '/find-ride',
-          cta: 'Explore routes'
-        }].map((c, i) => (
-          <Card key={i} className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="font-semibold" style={{ color: 'var(--text)' }}>{c.title}</div>
-                  <p className="mt-2 text-sm pr-2" style={{ color: 'var(--muted)' }}>{c.desc}</p>
+      <section>
+        <div className="flex items-center gap-2 mb-6">
+          <Navigation size={24} style={{ color: 'var(--brand)' }} />
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>Why Choose Us</h2>
+        </div>
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {[
+            {
+              title: 'Find Rides',
+              desc: 'Find nearby rides with live maps and smart matching. Book in seconds and track pickup in real time.',
+              icon: Search,
+              to: '/find-ride',
+              cta: 'Find rides'
+            },
+            {
+              title: 'Reserve Ahead',
+              desc: 'Plan ahead. Pick a pickup time on the Find Ride page to reserve your seat for later.',
+              icon: Clock,
+              to: '/find-ride',
+              cta: 'Reserve now'
+            },
+            {
+              title: 'Intercity Trips',
+              desc: 'Affordable outstation trips. Search routes between cities and pick the best option for you.',
+              icon: MapPin,
+              to: '/find-ride',
+              cta: 'Explore routes'
+            }
+          ].map((c, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+            >
+              <Card className="p-6 h-full" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="flex flex-col h-full">
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4" style={{ background: 'var(--brand-opacity)' }}>
+                    <c.icon size={28} style={{ color: 'var(--brand)' }} />
+                  </div>
+                  <div className="font-semibold text-lg mb-2" style={{ color: 'var(--text)' }}>{c.title}</div>
+                  <p className="text-sm flex-1 mb-4" style={{ color: 'var(--muted)' }}>{c.desc}</p>
+                  <Link to={c.to} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105" style={{ background: 'var(--brand)', color: '#111' }}>
+                    {c.cta}
+                    <ArrowRight size={16} />
+                  </Link>
                 </div>
-                <Link to={c.to} className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium active:scale-95 transition" style={{ background: '#111', color: '#fff' }}>
-                  {c.cta}
-                </Link>
-              </div>
-              <img src={c.img} alt={c.title} className="h-24 w-28 object-contain" />
-            </div>
-          </Card>
-        ))}
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
-      {/* How it works (CSS-like dimensions) */}
-      <section className="mt-6 md:mt-8">
-        <div className="booking-steps" style={{ maxWidth: 800, margin: '60px auto', padding: 20, fontFamily: 'Inter, ui-sans-serif, system-ui' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '1.8rem', marginBottom: 40, fontWeight: 700, color: 'var(--text)' }}>Book your trip in a few taps</h2>
-
-          {/* Step 1 */}
-          <div className="step" style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 50, gap: 20, borderLeft: '3px solid #000', paddingLeft: 20, position: 'relative' }}>
-            <span style={{ content: '""', position: 'absolute', left: -8, top: 10, width: 15, height: 15, background: '#000', borderRadius: '50%' }} />
-            <img src={stepIllos[0]} alt="Add details" style={{ width: 160, height: 'auto', borderRadius: 10, objectFit: 'cover' }} />
-            <div className="step-content">
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}><Link to="/find-ride">1. Add your trip details</Link></h3>
-              <p style={{ fontSize: '1rem', lineHeight: 1.5, color: '#333' }}>Choose pickup and drop, set seats/time, and preview fares and ETA.</p>
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="step" style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 50, gap: 20, borderLeft: '3px solid #000', paddingLeft: 20, position: 'relative' }}>
-            <span style={{ content: '""', position: 'absolute', left: -8, top: 10, width: 15, height: 15, background: '#000', borderRadius: '50%' }} />
-            <img src={stepIllos[1]} alt="Pay easily" style={{ width: 160, height: 'auto', borderRadius: 10, objectFit: 'cover' }} />
-            <div className="step-content">
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}><Link to="/payment">2. Pay securely</Link></h3>
-              <p style={{ fontSize: '1rem', lineHeight: 1.5, color: '#333' }}>Confirm your seat and pay via Razorpay/Stripe test—instant booking.</p>
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="step" style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 0, gap: 20, borderLeft: '3px solid #000', paddingLeft: 20, position: 'relative' }}>
-            <span style={{ content: '""', position: 'absolute', left: -8, top: 10, width: 15, height: 15, background: '#000', borderRadius: '50%' }} />
-            <img src={stepIllos[2]} alt="Meet driver" style={{ width: 160, height: 'auto', borderRadius: 10, objectFit: 'cover' }} />
-            <div className="step-content">
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}><Link to="/track">3. Meet your driver</Link></h3>
-              <p style={{ fontSize: '1rem', lineHeight: 1.5, color: '#333' }}>Track live on the map, get pickup updates, and ride together safely.</p>
-            </div>
-          </div>
+      {/* How it works */}
+      <section>
+        <div className="flex items-center gap-2 mb-6">
+          <Zap size={24} style={{ color: 'var(--brand)' }} />
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>How It Works</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            {
+              step: '1',
+              title: 'Search & Book',
+              desc: 'Choose pickup and drop, set seats/time, and preview fares and ETA.',
+              icon: Search,
+              link: '/find-ride'
+            },
+            {
+              step: '2',
+              title: 'Pay Securely',
+              desc: 'Confirm your seat and pay via Razorpay/Stripe test—instant booking.',
+              icon: CreditCard,
+              link: '/payment'
+            },
+            {
+              step: '3',
+              title: 'Track & Ride',
+              desc: 'Track live on the map, get pickup updates, and ride together safely.',
+              icon: Navigation,
+              link: '/track'
+            }
+          ].map((s, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+            >
+              <Card className="p-6 h-full relative" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="absolute -top-4 -left-4 w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold" style={{ background: 'var(--brand)', color: '#111' }}>
+                  {s.step}
+                </div>
+                <div className="pt-6">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: 'var(--brand-opacity)' }}>
+                    <s.icon size={24} style={{ color: 'var(--brand)' }} />
+                  </div>
+                  <div className="font-semibold text-lg mb-2" style={{ color: 'var(--text)' }}>{s.title}</div>
+                  <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>{s.desc}</p>
+                  <Link to={s.link} className="inline-flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--brand)' }}>
+                    Learn more <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
         </div>
       </section>
 
       {/* Stats */}
-      <section className="grid md:grid-cols-3 gap-4">
-        <Card className="p-5 text-center" style={{ background: 'rgba(17,17,17,0.9)', color: '#ffffff' }}>
-          <div className="text-2xl font-bold" style={{ color: '#ffffff' }}>120+</div>
-          <div className="text-sm" style={{ color: '#e5e7eb' }}>Active rides today</div>
-        </Card>
-        <Card className="p-5 text-center" style={{ background: 'rgba(17,17,17,0.9)', color: '#ffffff' }}>
-          <div className="text-2xl font-bold" style={{ color: '#ffffff' }}>45</div>
-          <div className="text-sm" style={{ color: '#e5e7eb' }}>Cities covered</div>
-        </Card>
-        <Card className="p-5 text-center" style={{ background: 'rgba(17,17,17,0.9)', color: '#ffffff' }}>
-          <div className="text-2xl font-bold" style={{ color: '#ffffff' }}>10k+</div>
-          <div className="text-sm" style={{ color: '#e5e7eb' }}>Happy riders</div>
-        </Card>
+      <section>
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp size={24} style={{ color: 'var(--brand)' }} />
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>Our Impact</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            {
+              value: '120+',
+              label: 'Active rides today',
+              icon: Car,
+              color: '#3b82f6'
+            },
+            {
+              value: '45',
+              label: 'Cities covered',
+              icon: MapPin,
+              color: '#10b981'
+            },
+            {
+              value: '10k+',
+              label: 'Happy riders',
+              icon: Users,
+              color: '#f59e0b'
+            }
+          ].map((stat, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+            >
+              <Card className="p-6 text-center" style={{ background: 'var(--brand-opacity)', border: '1px solid var(--border)' }}>
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--brand-opacity)' }}>
+                  <stat.icon size={28} style={{ color: 'var(--brand)' }} />
+                </div>
+                <div className="text-4xl font-bold mb-2" style={{ color: 'var(--text)' }}>{stat.value}</div>
+                <div className="text-sm" style={{ color: 'var(--muted)' }}>{stat.label}</div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       {/* CTA banner */}
-      <Card className="p-6 flex flex-col md:flex-row items-center justify-between gap-3" style={{ background: 'rgba(17,17,17,0.9)', backdropFilter: 'blur(8px)', color: '#ffffff' }}>
-        <div>
-          <div className="text-lg font-semibold" style={{ color: '#ffffff' }}>Ready to start?</div>
-          <div className="text-sm" style={{ color: '#e5e7eb' }}>Find a ride or offer one in a few taps.</div>
+      <Card className="p-8 flex flex-col md:flex-row items-center justify-between gap-6" style={{ background: 'var(--brand-opacity)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--brand)' }}>
+            <Car size={32} style={{ color: '#fbbf24' }} />
+          </div>
+          <div>
+            <div className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Ready to start your journey?</div>
+            <div className="text-sm" style={{ color: 'var(--muted)' }}>Find a ride or offer one in a few taps. Save money and reduce your carbon footprint.</div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link to="/find-ride"><Button>Find Ride</Button></Link>
-          <Link to="/create-ride"><button className="text-sm flex items-center gap-1 rounded-md px-3 py-1.5 border active:scale-95 transition" style={{ background: '#10b981', color: '#fff', borderColor: '#10b981' }}>Create Ride</button></Link>
+        <div className="flex items-center gap-3">
+          <Link to="/find-ride">
+            <button className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2" style={{ background: 'var(--brand)', color: '#111' }}>
+              <Search size={18} />
+              Find Ride
+            </button>
+          </Link>
+          <button onClick={(e) => handleCreateRideClick(e, navigate)} className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+            <Car size={18} />
+            Create Ride
+          </button>
         </div>
       </Card>
 
-      {/* Testimonials slider */}
+      {/* Testimonials */}
       <section>
-        <div className="font-semibold mb-3" style={{ color: 'var(--text)' }}>What riders say</div>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="flex items-center gap-2 mb-6">
+          <Star size={24} style={{ color: 'var(--brand)' }} />
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>What Riders Say</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
           {[{
             q: 'Smooth pickup and accurate ETA. Saved me time!',
             name: 'Ananya', city: 'Bengaluru',
+            rating: 5,
             img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=256&auto=format&fit=crop'
           }, {
             q: 'Great fares and friendly drivers. Booking was easy.',
             name: 'Ravi', city: 'Delhi',
+            rating: 5,
             img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=256&auto=format&fit=crop'
           }, {
             q: 'I share rides on my commute and it pays for fuel.',
             name: 'Mehul', city: 'Mumbai',
+            rating: 5,
             img: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=256&auto=format&fit=crop'
           }].map((t, i) => (
-            <motion.div key={i} className="rounded-xl border p-5" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.08)' }}
-              initial={{ opacity: 0, y: 10 }}
+            <motion.div
+              key={i}
+              className="rounded-2xl border p-6"
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: i * 0.05 }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
             >
-              <div className="text-sm" style={{ color: 'var(--text)' }}>&ldquo;{t.q}&rdquo;</div>
-              <div className="mt-3 flex items-center gap-2">
-                <img src={t.img} alt={t.name} className="h-8 w-8 rounded-full object-cover border" style={{ borderColor: 'rgba(0,0,0,0.08)' }} />
-                <div className="text-xs" style={{ color: 'var(--muted)' }}>{t.name}, {t.city}</div>
+              <div className="flex items-center gap-1 mb-3">
+                {[...Array(t.rating)].map((_, j) => (
+                  <Star key={j} size={16} fill="#fbbf24" style={{ color: '#fbbf24' }} />
+                ))}
+              </div>
+              <div className="text-sm mb-4" style={{ color: 'var(--text)' }}>&ldquo;{t.q}&rdquo;</div>
+              <div className="flex items-center gap-3">
+                <img src={t.img} alt={t.name} className="h-12 w-12 rounded-full object-cover border-2" style={{ borderColor: 'var(--brand)' }} />
+                <div>
+                  <div className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{t.name}</div>
+                  <div className="text-xs" style={{ color: 'var(--muted)' }}>{t.city}</div>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -203,38 +344,54 @@ export default function Landing() {
       </section>
 
       {/* Trust badges */}
-      <section className="grid md:grid-cols-3 gap-4">
-        {[
-          {
-            title: 'Secure payments',
-            desc: 'SSL and trusted gateways',
-            img: '/badge-secure-payments.svg'
-          },
-          {
-            title: 'Real-time tracking',
-            desc: 'Live location updates',
-            img: '/badge-realtime-tracking.svg'
-          },
-          {
-            title: 'Community rated',
-            desc: 'Quality via user reviews',
-            img: '/badge-community-rated.svg'
-          },
-        ].map((b, i) => (
-          <Card
-            key={i}
-            className="p-6 flex flex-col items-center text-center gap-3"
-            style={{ background: 'color-mix(in oklab, var(--surface) 96%, transparent)' }}
-          >
-            <div className="h-16 w-16 rounded-full overflow-hidden border" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-              <img src={b.img} alt={b.title} className="h-full w-full object-cover" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{b.title}</div>
-              <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>{b.desc}</div>
-            </div>
-          </Card>
-        ))}
+      <section>
+        <div className="flex items-center gap-2 mb-6">
+          <Shield size={24} style={{ color: 'var(--brand)' }} />
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>Trust & Safety</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            {
+              title: 'Secure Payments',
+              desc: 'SSL encryption and trusted payment gateways',
+              icon: Shield,
+              color: '#3b82f6'
+            },
+            {
+              title: 'Real-time Tracking',
+              desc: 'Live location updates and ETA monitoring',
+              icon: Navigation,
+              color: '#10b981'
+            },
+            {
+              title: 'Community Rated',
+              desc: 'Quality maintained through user reviews and ratings',
+              icon: Award,
+              color: '#f59e0b'
+            },
+          ].map((b, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.1 }}
+            >
+              <Card
+                className="p-6 flex flex-col items-center text-center gap-4"
+                style={{ background: 'var(--brand-opacity)', border: '1px solid var(--border)' }}
+              >
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'var(--brand-opacity)' }}>
+                  <b.icon size={32} style={{ color: 'var(--brand)' }} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>{b.title}</div>
+                  <div className="text-xs" style={{ color: 'var(--muted)' }}>{b.desc}</div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
     </div>

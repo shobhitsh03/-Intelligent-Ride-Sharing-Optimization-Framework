@@ -5,6 +5,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import api from '../lib/api';
 import { Card, Button, Alert } from '../components/UI.jsx';
 import LiveRideTracking from '../components/LiveRideTracking.jsx';
+import RideReceipt from '../components/RideReceipt.jsx';
+import { AnimatePresence } from 'framer-motion';
 
 export default function MyBookings() {
   const navigate = useNavigate();
@@ -13,6 +15,8 @@ export default function MyBookings() {
   const [user, setUser] = useState(null);
   const [trackingRideId, setTrackingRideId] = useState(null);
   const [cancelModal, setCancelModal] = useState(null); // For cancel confirmation modal
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState({ booking: null, ride: null, driver: null });
 
   useEffect(() => {
     fetchBookings();
@@ -93,6 +97,57 @@ export default function MyBookings() {
     setCancelModal(null);
   };
 
+  const showBookingReceipt = async (bookingId) => {
+    try {
+      const { data } = await api.get(`/api/booking/${bookingId}`);
+      setReceiptData({
+        booking: data.booking,
+        ride: data.ride,
+        driver: data.driver
+      });
+      setShowReceipt(true);
+    } catch (error) {
+      console.error('Failed to fetch booking details:', error);
+      toast.error('Failed to fetch receipt');
+    }
+  };
+
+  const handleDownloadReceipt = () => {
+    const receiptContent = `
+      RideFlex Booking Receipt
+      ========================
+      Booking ID: ${receiptData.booking?._id?.slice(-8).toUpperCase()}
+      From: ${receiptData.ride?.source}
+      To: ${receiptData.ride?.destination}
+      Date: ${receiptData.ride?.time ? new Date(receiptData.ride.time).toLocaleString() : 'N/A'}
+      Fare: ₹${receiptData.booking?.amount || receiptData.ride?.fare}
+      Payment Status: ${receiptData.booking?.status?.toUpperCase()}
+      Driver: ${receiptData.driver?.name}
+    `;
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt_${receiptData.booking?._id?.slice(-8).toUpperCase()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShareReceipt = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'RideFlex Booking Receipt',
+          text: `Booking ID: ${receiptData.booking?._id?.slice(-8).toUpperCase()}. Ride from ${receiptData.ride?.source} to ${receiptData.ride?.destination}.`
+        });
+      } catch (error) {
+        console.error('Share failed:', error);
+      }
+    } else {
+      alert('Sharing not supported on this browser');
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString();
   };
@@ -167,21 +222,30 @@ export default function MyBookings() {
                 </div>
                 
                 <div className="flex space-x-2">
+                  {/* Receipt Button */}
+                  <Button
+                    onClick={() => showBookingReceipt(booking._id)}
+                    className="px-3 py-1 text-sm"
+                    style={{ background: '#10B981', color: 'white', border: '1px solid #10B981' }}
+                  >
+                    View Receipt
+                  </Button>
+
                   {/* Live Tracking Button - Available for all bookings */}
-                  <Button 
+                  <Button
                     onClick={() => setTrackingRideId(trackingRideId === booking.ride?._id ? null : booking.ride?._id)}
                     className="px-3 py-1 text-sm"
                     variant={trackingRideId === booking.ride?._id ? "secondary" : "primary"}
                   >
                     {trackingRideId === booking.ride?._id ? 'Hide Tracking' : 'Track Ride'}
                   </Button>
-                  
+
                   {/* Cancel Booking Button - Always show for active bookings */}
-                  <Button 
+                  <Button
                     onClick={() => handleCancelBooking(booking)}
                     className="px-3 py-1 text-sm hover:bg-red-700"
-                    style={{ 
-                      background: '#dc2626', 
+                    style={{
+                      background: '#dc2626',
                       color: 'white',
                       border: '1px solid #dc2626'
                     }}
@@ -295,6 +359,20 @@ export default function MyBookings() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Receipt Modal */}
+      <AnimatePresence>
+        {showReceipt && (
+          <RideReceipt
+            booking={receiptData.booking}
+            ride={receiptData.ride}
+            driver={receiptData.driver}
+            onClose={() => setShowReceipt(false)}
+            onDownload={handleDownloadReceipt}
+            onShare={handleShareReceipt}
+          />
         )}
       </AnimatePresence>
     </div>

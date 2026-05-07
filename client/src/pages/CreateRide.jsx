@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import { Card, Button, ButtonSecondary, Input, Select, Alert } from '../components/UI.jsx';
+import geocodingService from '../lib/geocoding';
+import { Card, Button, Input, Select, Alert } from '../components/UI.jsx';
+import LoadingOverlay from '../components/LoadingOverlay.jsx';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { Car, MapPin, Clock, Users, CreditCard, Navigation, Zap, CheckCircle, Calendar, Shield } from 'lucide-react';
 
 export default function CreateRide() {
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ source: '', destination: '', availableSeats: '', fare: '', time: '' });
   const [msg, setMsg] = useState('');
   const [notice, setNotice] = useState('');
@@ -13,25 +18,69 @@ export default function CreateRide() {
   const [dstCoord, setDstCoord] = useState(null);
   const [srcOpts, setSrcOpts] = useState([]);
   const [dstOpts, setDstOpts] = useState([]);
+  const [isSearchingSrc, setIsSearchingSrc] = useState(false);
+  const [isSearchingDst, setIsSearchingDst] = useState(false);
+  const [geoError, setGeoError] = useState('');
   const [focusField, setFocusField] = useState(null);
   const [vehicle, setVehicle] = useState('car');
   const [subtype, setSubtype] = useState('');
   const [amenities, setAmenities] = useState({ ac: true, music: false, luggage: false });
-  const [center, setCenter] = useState([28.6139, 77.2090]);
-  const [suggestedFare, setSuggestedFare] = useState(null);
   const [plate, setPlate] = useState('');
-  const [photo, setPhoto] = useState(''); // data URL, kept local
+  const [photo, setPhoto] = useState('');
   const [photoName, setPhotoName] = useState('');
+  const [suggestedFare, setSuggestedFare] = useState(null);
+  const [center, setCenter] = useState([28.6139, 77.2090]);
   const fileInputRef = useRef(null);
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
 
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setCenter([pos.coords.latitude, pos.coords.longitude]);
-    });
+  const handleLocationSearch = useCallback(async (query, setResult, setIsSearching) => {
+    if (!query || query.length < 3) {
+      setResult([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    setGeoError('');
+    
+    try {
+      console.log('Searching for:', query);
+      const results = await geocodingService.geocode(query);
+      console.log('Search results:', results.length);
+      setResult(results.slice(0, 5));
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      setGeoError('Location search temporarily unavailable. Please try again.');
+      setResult([]);
+    } finally {
+      setIsSearching(false);
+    }
   }, []);
+
+  // Debounced search implementation
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const q = srcQuery.trim();
+      if (q.length >= 3) {
+        handleLocationSearch(q, setSrcOpts, setIsSearchingSrc);
+      } else {
+        setSrcOpts([]);
+      }
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [srcQuery, handleLocationSearch]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const q = dstQuery.trim();
+      if (q.length >= 3) {
+        handleLocationSearch(q, setDstOpts, setIsSearchingDst);
+      } else {
+        setDstOpts([]);
+      }
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [dstQuery, handleLocationSearch]);
 
   // Load draft on mount
   useEffect(() => {
@@ -44,11 +93,6 @@ export default function CreateRide() {
         setDstQuery(d.dstQuery || '');
         setSrcCoord(d.srcCoord || null);
         setDstCoord(d.dstCoord || null);
-        setVehicle(d.vehicle || 'car');
-        setSubtype(d.subtype || '');
-        setAmenities(d.amenities || { ac: true, music: false, luggage: false });
-        setPlate(d.plate || '');
-        setPhoto(d.photo || '');
       }
     } catch {}
   }, []);
@@ -59,38 +103,10 @@ export default function CreateRide() {
     localStorage.setItem('create_ride_draft', JSON.stringify(draft));
   }, [form, srcQuery, dstQuery, srcCoord, dstCoord, vehicle, subtype, amenities, plate, photo]);
 
-  useEffect(() => {
-    const q = srcQuery.trim();
-    if (q.length < 3) { setSrcOpts([]); return; }
-    const ctrl = new AbortController();
-    (async () => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`, { signal: ctrl.signal, headers: { 'Accept-Language': 'en' } });
-        const data = await res.json();
-        setSrcOpts((data || []).slice(0, 5));
-      } catch {}
-    })();
-    return () => ctrl.abort();
-  }, [srcQuery]);
-
-  useEffect(() => {
-    const q = dstQuery.trim();
-    if (q.length < 3) { setDstOpts([]); return; }
-    const ctrl = new AbortController();
-    (async () => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`, { signal: ctrl.signal, headers: { 'Accept-Language': 'en' } });
-        const data = await res.json();
-        setDstOpts((data || []).slice(0, 5));
-      } catch {}
-    })();
-    return () => ctrl.abort();
-  }, [dstQuery]);
-
-  // Compute suggested fare from distance (haversine) with base rate
+  // Compute suggested fare from distance
   useEffect(() => {
     if (!srcCoord || !dstCoord) { setSuggestedFare(null); return; }
-    const R = 6371; // km
+    const R = 6371;
     const toRad = (x)=> x * Math.PI/180;
     const [lat1, lon1] = [srcCoord[0], srcCoord[1]];
     const [lat2, lon2] = [dstCoord[0], dstCoord[1]];
@@ -99,8 +115,7 @@ export default function CreateRide() {
     const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const km = R * c;
-    // Base rate per km varies by vehicle
-    const rate = vehicle === 'bike' ? 5 : vehicle === 'suv' ? 12 : 8; // ₹/km
+    const rate = vehicle === 'bike' ? 5 : vehicle === 'suv' ? 12 : 8;
     const amenityAdder = (amenities.ac ? 1 : 0) + (amenities.luggage ? 0.5 : 0);
     const suggested = Math.max(50, Math.round((km * rate + amenityAdder * 10)));
     setSuggestedFare({ km: km.toFixed(1), value: suggested });
@@ -110,6 +125,7 @@ export default function CreateRide() {
     e.preventDefault();
     setMsg('');
     setNotice('');
+    setLoading(true);
     try {
       let sourceLoc = srcCoord ? { type: 'Point', coordinates: [srcCoord[1], srcCoord[0]] } : null;
       let destLoc = dstCoord ? { type: 'Point', coordinates: [dstCoord[1], dstCoord[0]] } : null;
@@ -131,132 +147,211 @@ export default function CreateRide() {
         vehicle,
         subtype,
         plate,
-        vehiclePhoto: photo, // kept private client-side; sent only for demo
+        vehiclePhoto: photo,
         amenities,
         sourceLoc,
         destLoc,
       };
       const { data } = await api.post('/api/rides/create', payload);
       setMsg(`Ride created: ${data.ride?.source} → ${data.ride?.destination}`);
-      // Clear draft on success
       localStorage.removeItem('create_ride_draft');
     } catch (e) {
       setMsg('');
       setNotice(e?.response?.data?.error || e?.message || 'Failed to create ride. Ensure you are logged in as driver.');
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="grid lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 h-[40vh] lg:h-[60vh] rounded-xl overflow-hidden border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-        <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }}>
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap contributors &copy; CARTO" />
-          {srcCoord && <Marker position={[srcCoord[0], srcCoord[1]]} />}
-          {dstCoord && <Marker position={[dstCoord[0], dstCoord[1]]} />}
-          {srcCoord && dstCoord && (
-            <Polyline positions={[ [srcCoord[0], srcCoord[1]], [dstCoord[0], dstCoord[1]] ]} pathOptions={{ color: '#FFC043', weight: 3 }} />
-          )}
-        </MapContainer>
+    <div className="space-y-6">
+      <LoadingOverlay show={loading} text="Creating ride..." />
+      
+      {/* Professional Header */}
+      <div className="rounded-2xl p-6 border" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 51, 234, 0.05) 100%)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' }}>
+              <Car size={28} style={{ color: '#fbbf24' }} />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text)' }}>Create a Ride</h1>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>Share your journey and earn money</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+                <Shield size={16} style={{ color: '#3b82f6' }} />
+              </div>
+              <div>
+                <div className="font-medium" style={{ color: 'var(--text)' }}>Secure</div>
+                <div className="text-xs" style={{ color: 'var(--muted)' }}>Verified riders</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16, 185, 129, 0.1)' }}>
+                <Zap size={16} style={{ color: '#10b981' }} />
+              </div>
+              <div>
+                <div className="font-medium" style={{ color: 'var(--text)' }}>Fast</div>
+                <div className="text-xs" style={{ color: 'var(--muted)' }}>Quick booking</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-3">
-        <Card className="p-6 space-y-3">
-          <h2 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Create Ride</h2>
-          {msg && <Alert type="success">{msg}</Alert>}
-          {notice && <Alert type="error">{notice}</Alert>}
-          <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Source</div>
-              <div className="relative">
-                <Input value={srcQuery} onChange={(e)=>{ setSrcQuery(e.target.value); setFocusField('src'); }} placeholder="Enter pickup" />
-                {focusField==='src' && srcOpts.length>0 && (
-                  <div className="absolute z-20 mt-1 w-full rounded-md border shadow" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.08)' }}>
-                    {srcOpts.map((opt)=> (
-                      <button key={opt.place_id} className="block w-full text-left px-3 py-2 text-sm hover:bg-black/5" onClick={()=>{ setSrcQuery(opt.display_name); setSrcCoord([Number(opt.lat), Number(opt.lon)]); setSrcOpts([]); setFocusField(null); set('source', opt.display_name); }} style={{ color: 'var(--text)' }}>
-                        {opt.display_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+      {/* Alert Messages */}
+      <div className="mb-4">
+        {msg && <Alert type="success">{msg}</Alert>}
+        {notice && <Alert type="error">{notice}</Alert>}
+      </div>
+
+      {/* Main Content */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 h-[50vh] lg:h-[70vh] rounded-2xl overflow-hidden border" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
+          <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }}>
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap contributors &copy; CARTO" />
+            {srcCoord && <Marker position={[srcCoord[0], srcCoord[1]]} />}
+            {dstCoord && <Marker position={[dstCoord[0], dstCoord[1]]} />}
+            {srcCoord && dstCoord && (
+              <Polyline positions={[ [srcCoord[0], srcCoord[1]], [dstCoord[0], dstCoord[1]] ]} pathOptions={{ color: '#3b82f6', weight: 4 }} />
+            )}
+          </MapContainer>
+        </div>
+
+        <div className="space-y-4">
+          <Card className="p-6" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.08)' }}>
+            <div className="flex items-center gap-2 mb-4">
+              <Navigation size={20} style={{ color: 'var(--brand)' }} />
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Ride Details</h2>
+            </div>
+            <form onSubmit={onSubmit} className="space-y-4">
+            <div style={{ position: 'relative' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin size={16} style={{ color: 'var(--brand)' }} />
+                <div className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Source</div>
+              </div>
+              <Input 
+                value={srcQuery} 
+                onChange={(e)=>{ setSrcQuery(e.target.value); setFocusField('src'); }} 
+                placeholder="Enter pickup location"
+                className={isSearchingSrc ? 'opacity-50' : ''}
+              />
+              {geoError && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border shadow p-2 text-sm" style={{ background: 'var(--surface)', borderColor: 'rgba(220, 38, 38, 0.2)', color: '#dc2626' }}>
+                  {geoError}
+                </div>
+              )}
+              {focusField==='src' && srcOpts.length>0 && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border shadow" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.08)' }}>
+                  {srcOpts.map((opt)=> (
+                    <button key={opt.place_id} className="block w-full text-left px-3 py-2 text-sm hover:bg-black/5" onClick={()=>{ setSrcQuery(opt.display_name); setSrcCoord([Number(opt.lat), Number(opt.lon)]); setSrcOpts([]); setFocusField(null); set('source', opt.display_name); }} style={{ color: 'var(--text)' }}>
+                      {opt.display_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ position: 'relative' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin size={16} style={{ color: '#ef4444' }} />
+                <div className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Destination</div>
+              </div>
+              <Input 
+                value={dstQuery} 
+                onChange={(e)=>{ setDstQuery(e.target.value); setFocusField('dst'); }} 
+                placeholder="Enter drop location"
+                className={isSearchingDst ? 'opacity-50' : ''}
+              />
+              {geoError && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border shadow p-2 text-sm" style={{ background: 'var(--surface)', borderColor: 'rgba(220, 38, 38, 0.2)', color: '#dc2626' }}>
+                  {geoError}
+                </div>
+              )}
+              {focusField==='dst' && dstOpts.length>0 && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border shadow" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.08)' }}>
+                  {dstOpts.map((opt)=> (
+                    <button key={opt.place_id} className="block w-full text-left px-3 py-2 text-sm hover:bg-black/5" onClick={()=>{ setDstQuery(opt.display_name); setDstCoord([Number(opt.lat), Number(opt.lon)]); setDstOpts([]); setFocusField(null); set('destination', opt.display_name); }} style={{ color: 'var(--text)' }}>
+                      {opt.display_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Users size={16} style={{ color: 'var(--brand)' }} />
+                  <div className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Seats</div>
+                </div>
+                <Input type="number" min={1} max={6} placeholder="e.g. 3" value={form.availableSeats} onChange={(e)=>set('availableSeats', e.target.value)} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <CreditCard size={16} style={{ color: 'var(--brand)' }} />
+                  <div className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Fare (₹)</div>
+                </div>
+                <Input type="number" min={0} placeholder="e.g. 150" value={form.fare} onChange={(e)=>set('fare', e.target.value)} />
               </div>
             </div>
-
-            <div className="col-span-2">
-              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Destination</div>
-              <div className="relative">
-                <Input value={dstQuery} onChange={(e)=>{ setDstQuery(e.target.value); setFocusField('dst'); }} placeholder="Enter drop" />
-                {focusField==='dst' && dstOpts.length>0 && (
-                  <div className="absolute z-20 mt-1 w-full rounded-md border shadow" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.08)' }}>
-                    {dstOpts.map((opt)=> (
-                      <button key={opt.place_id} className="block w-full text-left px-3 py-2 text-sm hover:bg-black/5" onClick={()=>{ setDstQuery(opt.display_name); setDstCoord([Number(opt.lat), Number(opt.lon)]); setDstOpts([]); setFocusField(null); set('destination', opt.display_name); }} style={{ color: 'var(--text)' }}>
-                        {opt.display_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Clock size={16} style={{ color: 'var(--brand)' }} />
+                <div className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Pickup time</div>
               </div>
-            </div>
-
-            <div>
-              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Seats</div>
-              <Input type="number" min={1} max={6} placeholder="e.g. 3" value={form.availableSeats} onChange={(e)=>set('availableSeats', e.target.value)} />
-            </div>
-            <div>
-              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Fare (₹)</div>
-              <Input type="number" min={0} placeholder="e.g. 150" value={form.fare} onChange={(e)=>set('fare', e.target.value)} />
-            </div>
-
-            <div className="col-span-2">
-              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Pickup time</div>
               <Input type="datetime-local" value={form.time} onChange={(e)=>set('time', e.target.value)} />
             </div>
-
-            <div>
-              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Vehicle</div>
-              <Select value={vehicle} onChange={(e)=>setVehicle(e.target.value)}>
-                <option value="car">Car</option>
-                <option value="suv">SUV</option>
-                <option value="bike">Bike</option>
-              </Select>
-            </div>
-
-            {/* Conditional subtype based on vehicle */}
-            <div>
-              <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Subtype</div>
-              <Select value={subtype} onChange={(e)=>setSubtype(e.target.value)}>
-                {(vehicle === 'car') && (<>
-                  <option value="">Select subtype</option>
-                  <option value="hatchback">Hatchback</option>
-                  <option value="sedan">Sedan</option>
-                  <option value="mpv">MPV</option>
-                </>)}
-                {(vehicle === 'suv') && (<>
-                  <option value="">Select subtype</option>
-                  <option value="compact">Compact SUV</option>
-                  <option value="full">Full-size SUV</option>
-                </>)}
-                {(vehicle === 'bike') && (<>
-                  <option value="">Select subtype</option>
-                  <option value="scooter">Scooter</option>
-                  <option value="standard">Standard</option>
-                </>)}
-              </Select>
-            </div>
-
-            <div className="col-span-2 flex items-center gap-4 text-sm" style={{ color: 'var(--muted)' }}>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={amenities.ac} onChange={(e)=>setAmenities(a=>({...a, ac: e.target.checked}))} /> AC</label>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={amenities.music} onChange={(e)=>setAmenities(a=>({...a, music: e.target.checked}))} /> Music</label>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={amenities.luggage} onChange={(e)=>setAmenities(a=>({...a, luggage: e.target.checked}))} /> Luggage</label>
-            </div>
-
-            {/* Private details */}
-            <div className="col-span-2 grid grid-cols-2 gap-3 items-end">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Vehicle number plate (private)</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Car size={16} style={{ color: 'var(--brand)' }} />
+                  <div className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Vehicle</div>
+                </div>
+                <Select value={vehicle} onChange={(e)=>setVehicle(e.target.value)}>
+                  <option value="car">Car</option>
+                  <option value="suv">SUV</option>
+                  <option value="bike">Bike</option>
+                </Select>
+              </div>
+              <div>
+                <div className="text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Subtype</div>
+                <Select value={subtype} onChange={(e)=>setSubtype(e.target.value)}>
+                  {(vehicle === 'car') && (<>
+                    <option value="">Select subtype</option>
+                    <option value="hatchback">Hatchback</option>
+                    <option value="sedan">Sedan</option>
+                    <option value="mpv">MPV</option>
+                  </>)}
+                  {(vehicle === 'suv') && (<>
+                    <option value="">Select subtype</option>
+                    <option value="compact">Compact SUV</option>
+                    <option value="full">Full-size SUV</option>
+                  </>)}
+                  {(vehicle === 'bike') && (<>
+                    <option value="">Select subtype</option>
+                    <option value="scooter">Scooter</option>
+                    <option value="standard">Standard</option>
+                  </>)}
+                </Select>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>Amenities</div>
+              <div className="flex items-center gap-4 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={amenities.ac} onChange={(e)=>setAmenities(a=>({...a, ac: e.target.checked}))} /> AC</label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={amenities.music} onChange={(e)=>setAmenities(a=>({...a, music: e.target.checked}))} /> Music</label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={amenities.luggage} onChange={(e)=>setAmenities(a=>({...a, luggage: e.target.checked}))} /> Luggage</label>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Vehicle number plate (private)</div>
                 <Input value={plate} onChange={(e)=>setPlate(e.target.value)} placeholder="e.g. DL 01 AB 1234" />
               </div>
               <div>
-                <div className="text-xs mb-1" style={{ color: 'var(--muted)' }}>Vehicle photo (private)</div>
+                <div className="text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Vehicle photo (private)</div>
                 <input
                   ref={fileInputRef}
                   className="hidden"
@@ -272,7 +367,7 @@ export default function CreateRide() {
                   }}
                 />
                 <div className="flex items-center gap-2">
-                  <ButtonSecondary type="button" onClick={()=>fileInputRef.current?.click()}>Choose file</ButtonSecondary>
+                  <button type="button" className="px-3 py-1.5 text-sm rounded border" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.1)' }} onClick={()=>fileInputRef.current?.click()}>Choose file</button>
                   <span className="text-xs" style={{ color: 'var(--muted)' }}>{photoName || 'No file chosen'}</span>
                 </div>
                 {photo && (
@@ -280,20 +375,21 @@ export default function CreateRide() {
                 )}
               </div>
             </div>
-
-            {/* Fare suggestion */}
             {suggestedFare && (
-              <div className="col-span-2 text-sm flex items-center justify-between rounded-md px-3 py-2" style={{ background: 'color-mix(in oklab, var(--primary) 6%, transparent)', color: 'var(--text)' }}>
-                <div>Approx distance: {suggestedFare.km} km • Suggested fare: ₹{suggestedFare.value}</div>
-                <ButtonSecondary type="button" onClick={()=>set('fare', suggestedFare.value)}>
+              <div className="text-sm flex items-center justify-between rounded-xl px-4 py-3" style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
+                <div className="flex items-center gap-2">
+                  <Zap size={16} style={{ color: '#3b82f6' }} />
+                  <span style={{ color: 'var(--text)' }}>Approx distance: {suggestedFare.km} km • Suggested fare: ₹{suggestedFare.value}</span>
+                </div>
+                <button type="button" className="px-3 py-1.5 text-sm rounded-lg font-medium" style={{ background: 'var(--brand)', color: '#111' }} onClick={()=>set('fare', suggestedFare.value)}>
                   Use suggestion
-                </ButtonSecondary>
+                </button>
               </div>
             )}
-
-            <Button className="col-span-2 w-full" type="submit">Create</Button>
+            <Button className="w-full py-3 rounded-xl font-semibold" type="submit" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', color: '#111' }}>Create Ride</Button>
           </form>
         </Card>
+        </div>
       </div>
     </div>
   );

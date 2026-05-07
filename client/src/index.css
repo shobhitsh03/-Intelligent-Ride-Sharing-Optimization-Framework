@@ -3,34 +3,212 @@
 /* App base styles */
 html, body, #root { height: 100%; }
 
-/* Light theme variables (kept minimal; app defaults to dark/Uber style) */
+/* Light theme with professional yellow palette */
 :root {
-  --brand: #000000;   /* Uber black */
-  --accent: #FFC043;  /* Uber accent */
+  --brand: #F59E0B;    /* Golden yellow */
+  --accent: #EAB308;   /* Orange-yellow */
+  --secondary: #FFFBEB; /* Light yellow background */
+  --tertiary: #FEF3C7; /* Very light yellow */
   --primary: var(--brand);
-  --bg: #f7f7f7;
-  --surface: #ffffff;
-  --text: #111827;
-  --muted: #6b7280;
+  --bg: #FFFFFF;      /* Pure white */
+  --surface: rgba(255, 255, 255, 0.9); /* Light surface */
+  --text: #854D0E;    /* Dark yellow-brown */
+  --muted: #A16207;   /* Muted yellow-orange */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(245, 158, 11, 0.2);
+  --navbar-bg: rgba(17, 17, 17, 0.9); /* Dark gray navbar background (same as Active Rides Today card) */
+  --navbar-border: rgba(17, 17, 17, 0.3); /* Dark gray navbar border */
+  --brand-opacity: rgba(245, 158, 11, 0.1); /* Brand color with opacity */
+  --border: rgba(0, 0, 0, 0.08); /* Subtle border color */
 }
 
-/* Dark theme variables */
+/* Dark theme - Dark Modern Premium Look */
 .dark {
-  --brand: #000000;
-  --accent: #FFC043;
+  --brand: #6366F1;    /* Indigo - Primary */
+  --accent: #22D3EE;   /* Cyan - Secondary */
+  --accent-bg: #334155; /* Accent background */
+  --secondary: #0F172A; /* Dark Navy - Background */
+  --tertiary: #1E293B; /* Card background */
   --primary: var(--brand);
-  --bg: #0a0a0a;      /* near-black */
-  --surface: #111111; /* dark surface */
-  --text: #f5f5f5;    /* off-white */
-  --muted: #a3a3a3;   /* gray */
+  --bg: #0F172A;      /* Dark Navy background */
+  --surface: rgba(30, 41, 59, 0.9); /* Card surface */
+  --text: #E2E8F0;    /* Light gray text */
+  --muted: #94A3B8;   /* Muted text */
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(99, 102, 241, 0.2);
+  --brand-opacity: rgba(99, 102, 241, 0.1); /* Brand color with opacity */
+  --border: rgba(255, 255, 255, 0.08); /* Subtle border color */
 }
 
 body {
-  background: var(--bg);
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--tertiary) 100%);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--tertiary) 100%);
   color: var(--text);
 }
 
+/* Ensure dark mode transitions work smoothly */
+.dark .glass-card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+
+.dark .glass {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+
+/* Dark mode for inputs and form elements */
+.dark input, .dark textarea, .dark select {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--glass-border);
+}
+
+/* Dark mode for cards */
+.dark .card {
+  background-color: var(--surface);
+  border-color: var(--glass-border);
+}
+
 a { color: var(--primary); }
+
+/* Glassmorphism utility classes */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.15);
+}
+
+.glass-card {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.15);
+}
+
+/* Animated background elements */
+.bg-animation {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--tertiary) 100%);
+  overflow: hidden;
+}
+
+.bg-animation::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(129, 166, 198, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: bgMove 20s linear infinite;
+}
+
+@keyframes bgMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Enhanced glassmorphism effects */
+.glass-enhanced {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Floating animation for cards */
+.floating {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Glow effects */
+.glow-on-hover:hover {
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.5), 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+/* Additional animations for enhanced alerts */
+@keyframes neonPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes neonFlicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+  75% {
+    opacity: 1;
+  }
+}
+
+@keyframes borderRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideInBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(-100px) scale(0.3);
+  }
+  50% {
+    transform: translateY(10px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
 
 /* Custom scrollbar */
 * {

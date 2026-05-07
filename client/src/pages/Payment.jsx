@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { Card, Button, Input, Select, Alert } from '../components/UI.jsx';
 import LoadingOverlay from '../components/LoadingOverlay.jsx';
+import RideReceipt from '../components/RideReceipt.jsx';
+import CustomPaymentGateway from '../components/CustomPaymentGateway.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Payment() {
@@ -17,6 +19,10 @@ export default function Payment() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [bookNowPayLater, setBookNowPayLater] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState({ booking: null, ride: null, driver: null });
+  const [showCustomGateway, setShowCustomGateway] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   // Prefill from navigation state (Find Ride "Book")
   useEffect(() => {
@@ -24,6 +30,69 @@ export default function Payment() {
     if (st.amount && typeof st.amount === 'number') setAmount(st.amount);
     if (st.rideId) setRideId(st.rideId);
   }, [location?.state]);
+
+  // Clear message when custom gateway is shown
+  useEffect(() => {
+    if (showCustomGateway) {
+      setMsg('');
+      setType('info');
+      setSuccess(false);
+      // Clear any potential cached error messages
+      localStorage.removeItem('payment_error');
+      console.log('Custom gateway opened, cleared parent message state and localStorage');
+    }
+  }, [showCustomGateway]);
+
+  const showBookingReceipt = async (bookingId) => {
+    try {
+      const { data } = await api.get(`/api/booking/${bookingId}`);
+      setReceiptData({
+        booking: data.booking,
+        ride: data.ride,
+        driver: data.driver
+      });
+      setShowReceipt(true);
+    } catch (error) {
+      console.error('Failed to fetch booking details:', error);
+    }
+  };
+
+  const handleDownloadReceipt = () => {
+    // Simple download functionality - can be enhanced
+    const receiptContent = `
+      RideFlex Booking Receipt
+      ========================
+      Booking ID: ${receiptData.booking?._id?.slice(-8).toUpperCase()}
+      From: ${receiptData.ride?.source}
+      To: ${receiptData.ride?.destination}
+      Date: ${receiptData.ride?.time ? new Date(receiptData.ride.time).toLocaleString() : 'N/A'}
+      Fare: ₹${receiptData.booking?.amount || receiptData.ride?.fare}
+      Payment Status: ${receiptData.booking?.status?.toUpperCase()}
+      Driver: ${receiptData.driver?.name}
+    `;
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt_${receiptData.booking?._id?.slice(-8).toUpperCase()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShareReceipt = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'RideFlex Booking Receipt',
+          text: `Booking ID: ${receiptData.booking?._id?.slice(-8).toUpperCase()}. Ride from ${receiptData.ride?.source} to ${receiptData.ride?.destination}.`
+        });
+      } catch (error) {
+        console.error('Share failed:', error);
+      }
+    } else {
+      alert('Sharing not supported on this browser');
+    }
+  };
 
   async function startPayment() {
     setMsg('');
@@ -63,6 +132,9 @@ export default function Payment() {
         setType('success');
         setSuccess(true);
         setLoading(false);
+        if (bid) {
+          await showBookingReceipt(bid);
+        }
         return;
       }
 
@@ -86,6 +158,9 @@ export default function Payment() {
             setMsg('Payment success');
             setType('success');
             setSuccess(true);
+            if (bid) {
+              await showBookingReceipt(bid);
+            }
           },
           theme: { color: '#2563EB' },
         };
@@ -113,6 +188,7 @@ export default function Payment() {
         <div className="space-y-2">
           <Select value={provider} onChange={(e)=>setProvider(e.target.value)} disabled={bookNowPayLater}>
             <option value="stripe">Stripe (test)</option>
+            <option value="custom">RideFlex Gateway (Card/UPI/Wallet)</option>
           </Select>
           <Input 
             type="number" 
@@ -140,15 +216,26 @@ export default function Payment() {
             </label>
           </div>
           
-          <Button 
-            className="w-full" 
-            onClick={startPayment}
+          <Button
+            className="w-full"
+            onClick={() => {
+              if (provider === 'custom') {
+                setMsg(''); // Clear any existing messages
+                setType('info');
+                setSuccess(false); // Clear success state
+                setShowCustomGateway(true);
+                console.log('Opening custom gateway, cleared msg and success state');
+              } else {
+                startPayment();
+              }
+            }}
             disabled={loading}
           >
-            {loading ? 'Processing...' : (bookNowPayLater ? 'Book Ride (Pay Later)' : `Pay $${(amount / 100).toFixed(2)}`)}
+            {loading ? 'Processing...' : (bookNowPayLater ? 'Book Ride (Pay Later)' : (provider === 'custom' ? `Pay ₹${(amount / 100).toFixed(2)}` : `Pay $${(amount / 100).toFixed(2)}`))}
           </Button>
         </div>
-        {msg && <Alert type={type}>{msg}</Alert>}
+        {/* Temporarily removed Alert to debug issue */}
+        {/* {msg && !showCustomGateway && <Alert key={forceUpdate} type={type}>{msg}</Alert>} */}
       </Card>
 
       {/* Success animation */}
@@ -191,6 +278,55 @@ export default function Payment() {
               </motion.div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Receipt Modal */}
+      <AnimatePresence>
+        {showReceipt && (
+          <RideReceipt
+            booking={receiptData.booking}
+            ride={receiptData.ride}
+            driver={receiptData.driver}
+            onClose={() => setShowReceipt(false)}
+            onDownload={handleDownloadReceipt}
+            onShare={handleShareReceipt}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Custom Payment Gateway Modal */}
+      <AnimatePresence>
+        {showCustomGateway && (
+          <CustomPaymentGateway
+            amount={amount / 100}
+            bookingId={bookingId}
+            onPaymentSuccess={async (result) => {
+              console.log('Payment success callback called in parent');
+              setShowCustomGateway(false);
+              
+              // Clear all states first
+              setMsg('');
+              setType('info');
+              
+              // Then set success states
+              setTimeout(() => {
+                setSuccess(true);
+                setMsg('Payment successful');
+                setType('success');
+                setForceUpdate(prev => prev + 1);
+                console.log('All states updated, forcing re-render');
+                
+                // Show receipt after a short delay
+                setTimeout(async () => {
+                  if (bookingId) {
+                    await showBookingReceipt(bookingId);
+                  }
+                }, 100);
+              }, 50);
+            }}
+            onPaymentCancel={() => setShowCustomGateway(false)}
+          />
         )}
       </AnimatePresence>
     </div>

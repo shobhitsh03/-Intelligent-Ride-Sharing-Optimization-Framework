@@ -14,9 +14,8 @@ export default function Register() {
 
   function toggleRole(role) {
     setForm((f) => {
-      const has = Array.isArray(f.roles) && f.roles.includes(role);
-      const nextRoles = has ? f.roles.filter(r => r !== role) : [...(f.roles || []), role];
-      return { ...f, roles: nextRoles };
+      // For radio buttons, always set to the selected role only
+      return { ...f, roles: [role] };
     });
   }
 
@@ -40,7 +39,7 @@ export default function Register() {
       const digits = (form.phone || '').replace(/[^0-9]/g, '');
       if (digits.length < 7 || digits.length > 15) { setError('Enter a valid phone number'); return false; }
     }
-    if (!Array.isArray(form.roles) || form.roles.length === 0) { setError('Select at least one role'); return false; }
+    if (!Array.isArray(form.roles) || form.roles.length === 0) { setError('Please select a role'); return false; }
     return true;
   }
 
@@ -70,77 +69,159 @@ export default function Register() {
   }
 
   return (
-    <div className="max-w-md mx-auto">
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--text)' }}>Register</h2>
-        {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
-        <form onSubmit={onSubmit} className="space-y-3">
-          <Input placeholder="Name" value={form.name} onChange={(e)=>set('name', e.target.value)} />
-          <div className="relative">
-            <Input
-              placeholder="Email"
-              value={form.email}
-              onChange={(e)=>{ set('email', e.target.value); setShowEmailSug(true); }}
-              onFocus={()=> setShowEmailSug(true)}
-              onBlur={()=> setTimeout(()=> setShowEmailSug(false), 120)}
-              autoComplete="off"
+    <>
+      <div className="bg-animation" />
+      <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
+        <Card className="p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-3">
+              <span style={{ color: 'var(--brand)' }}>Ride</span>
+              <span style={{ color: '#D97706' }}>Flex</span>
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              Join the future of smart mobility
+            </p>
+          </div>
+          
+          <h2 className="text-xl font-semibold mb-6 text-center" style={{ color: 'var(--text)' }}>
+            Create Account
+          </h2>
+          
+          {error && (
+            <div className="mb-4 p-3 rounded-xl text-sm font-medium text-center" 
+                 style={{ 
+                   background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', 
+                   color: '#FFFFFF',
+                   border: '1px solid rgba(255,255,255,0.2)'
+                 }}>
+              {error}
+            </div>
+          )}
+          
+          <form onSubmit={onSubmit} className="space-y-4">
+            <Input 
+              placeholder="Full Name" 
+              value={form.name} 
+              onChange={(e)=>set('name', e.target.value)} 
+              className="w-full"
             />
-            {showEmailSug && (getHistory('emailHistory').filter(v => !form.email || v.toLowerCase().includes(form.email.toLowerCase())).length > 0) && (
-              <div className="absolute left-0 right-0 mt-1 rounded-md border text-sm max-h-40 overflow-auto" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.12)', zIndex: 20 }}>
-                {getHistory('emailHistory')
-                  .filter(v => !form.email || v.toLowerCase().includes(form.email.toLowerCase()))
-                  .map((v) => (
-                    <div key={v} className="px-3 py-2 cursor-pointer hover:bg-black/5" onMouseDown={(e)=>{ e.preventDefault(); set('email', v); setShowEmailSug(false); }}>
-                      {v}
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-          <Input placeholder="Password" type="password" value={form.password} onChange={(e)=>set('password', e.target.value)} />
-          <div className="relative">
-            <Input
-              placeholder="Phone"
-              value={form.phone}
-              onChange={(e)=>{ set('phone', e.target.value); setShowPhoneSug(true); }}
-              onFocus={()=> setShowPhoneSug(true)}
-              onBlur={()=> setTimeout(()=> setShowPhoneSug(false), 120)}
-              autoComplete="off"
+            
+            <div className="relative">
+              <Input
+                placeholder="Email Address"
+                value={form.email}
+                onChange={(e)=>{ set('email', e.target.value); setShowEmailSug(true); }}
+                onFocus={()=> setShowEmailSug(true)}
+                onBlur={()=> setTimeout(()=> setShowEmailSug(false), 120)}
+                autoComplete="off"
+                className="w-full"
+              />
+              {showEmailSug && (getHistory('emailHistory').filter(v => !form.email || v.toLowerCase().includes(form.email.toLowerCase())).length > 0) && (
+                <div className="absolute left-0 right-0 mt-1 rounded-xl border text-sm max-h-40 overflow-auto glass-card z-20"
+                     style={{ 
+                       top: '100%'
+                     }}>
+                  {getHistory('emailHistory')
+                    .filter(v => !form.email || v.toLowerCase().includes(form.email.toLowerCase()))
+                    .map((v) => (
+                      <div key={v} 
+                           className="px-3 py-2 cursor-pointer transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700"
+                           onMouseDown={(e)=>{ e.preventDefault(); set('email', v); setShowEmailSug(false); }}
+                           style={{ color: 'var(--text)' }}>
+                        {v}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+            
+            <Input 
+              placeholder="Password" 
+              type="password" 
+              value={form.password} 
+              onChange={(e)=>set('password', e.target.value)} 
+              className="w-full"
             />
-            {showPhoneSug && (getHistory('phoneHistory').filter(v => !form.phone || v.includes(form.phone)).length > 0) && (
-              <div className="absolute left-0 right-0 mt-1 rounded-md border text-sm max-h-40 overflow-auto" style={{ background: 'var(--surface)', borderColor: 'rgba(0,0,0,0.12)', zIndex: 20 }}>
-                {getHistory('phoneHistory')
-                  .filter(v => !form.phone || v.includes(form.phone))
-                  .map((v) => (
-                    <div key={v} className="px-3 py-2 cursor-pointer hover:bg-black/5" onMouseDown={(e)=>{ e.preventDefault(); set('phone', v); setShowPhoneSug(false); }}>
-                      {v}
-                    </div>
-                  ))}
+            
+            <div className="relative">
+              <Input
+                placeholder="Phone Number"
+                value={form.phone}
+                onChange={(e)=>{ set('phone', e.target.value); setShowPhoneSug(true); }}
+                onFocus={()=> setShowPhoneSug(true)}
+                onBlur={()=> setTimeout(()=> setShowPhoneSug(false), 120)}
+                autoComplete="off"
+                className="w-full"
+              />
+              {showPhoneSug && (getHistory('phoneHistory').filter(v => !form.phone || v.includes(form.phone)).length > 0) && (
+                <div className="absolute left-0 right-0 mt-1 rounded-xl border text-sm max-h-40 overflow-auto glass-card z-20"
+                     style={{ 
+                       top: '100%'
+                     }}>
+                  {getHistory('phoneHistory')
+                    .filter(v => !form.phone || v.includes(form.phone))
+                    .map((v) => (
+                      <div key={v} 
+                           className="px-3 py-2 cursor-pointer transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700"
+                           onMouseDown={(e)=>{ e.preventDefault(); set('phone', v); setShowPhoneSug(false); }}
+                           style={{ color: 'var(--text)' }}>
+                        {v}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>I want to:</p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+                <label className="inline-flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="role"
+                    checked={Array.isArray(form.roles) && form.roles.includes('rider')}
+                    onChange={() => toggleRole('rider')}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    style={{ 
+                      accentColor: 'var(--brand)'
+                    }}
+                  />
+                  <span className="text-sm font-medium group-hover:text-indigo-400 transition-colors" style={{ color: 'var(--text)' }}>
+                    🚗 Ride as Passenger
+                  </span>
+                </label>
+                <label className="inline-flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="role"
+                    checked={Array.isArray(form.roles) && form.roles.includes('driver')}
+                    onChange={() => toggleRole('driver')}
+                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    style={{ 
+                      accentColor: 'var(--brand)'
+                    }}
+                  />
+                  <span className="text-sm font-medium group-hover:text-indigo-400 transition-colors" style={{ color: 'var(--text)' }}>
+                    🚙 Offer Rides
+                  </span>
+                </label>
               </div>
-            )}
+            </div>
+            
+            <Button className="w-full text-base py-3 mt-6">Create Account</Button>
+          </form>
+          
+          <div className="text-center mt-6 pt-6 border-t" 
+               style={{ borderColor: 'var(--glass-border)' }}>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              Already have an account? 
+              <Link to="/login" className="ml-1 font-semibold hover:text-indigo-400 transition-colors" style={{ color: 'var(--brand)' }}>
+                Sign In
+              </Link>
+            </p>
           </div>
-          <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--text)' }}>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={Array.isArray(form.roles) && form.roles.includes('rider')}
-                onChange={() => toggleRole('rider')}
-              />
-              Rider
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={Array.isArray(form.roles) && form.roles.includes('driver')}
-                onChange={() => toggleRole('driver')}
-              />
-              Driver
-            </label>
-          </div>
-          <Button className="w-full">Register</Button>
-        </form>
-        <div className="text-sm mt-3" style={{ color: 'var(--muted)' }}>Have an account? <Link to="/login" style={{ color: 'var(--primary)' }}>Login</Link></div>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 }

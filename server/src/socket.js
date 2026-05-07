@@ -25,5 +25,15 @@ export default function initSockets(io) {
     socket.on('leave:user', ({ userId }) => {
       if (userId) socket.leave(String(userId));
     });
+
+    // Join ride room for booking notifications
+    socket.on('join:ride', ({ rideId }) => {
+      if (rideId) socket.join(String(rideId));
+    });
+
+    // Leave ride room
+    socket.on('leave:ride', ({ rideId }) => {
+      if (rideId) socket.leave(String(rideId));
+    });
   });
 }
